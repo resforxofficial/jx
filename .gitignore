@@ -7,3 +7,5 @@ dist
 __vscode__
 .tx_temp_output.js
 .tx_temp_output.ts
+
+tx_temp_output.ts
