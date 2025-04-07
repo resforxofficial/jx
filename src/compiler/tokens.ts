@@ -1,3 +1,4 @@
+// tokens.ts
 export type TokenType =
     | 'Keyword'          // mut, out 등
     | 'Type'             // str, num, bool 등
@@ -6,7 +7,7 @@ export type TokenType =
     | 'StringLiteral'    // "hello"
     | 'NumberLiteral'    // 123
     | 'BooleanLiteral'   // true, false
-    | 'Semicolon'        // ;
+    | 'Punctuation'      // ; : . ,
     | 'ParenOpen'        // (
     | 'ParenClose'       // )
     | 'Unknown';         // 모르는 것들 (에러 처리용)
@@ -30,31 +31,43 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
-        // 세미콜론
-        if (char === ';') {
-            tokens.push({ type: 'Semicolon', value: ';', position: i });
+        // 구두점들 처리 ; : . ,
+        if (';:.,'.includes(char)) {
+            tokens.push({ type: 'Punctuation', value: char, position: i });
             i++;
             continue;
         }
 
-        // 문자열
+        // 괄호 처리
+        if (char === '(') {
+            tokens.push({ type: 'ParenOpen', value: char, position: i });
+            i++;
+            continue;
+        }
+
+        if (char === ')') {
+            tokens.push({ type: 'ParenClose', value: char, position: i });
+            i++;
+            continue;
+        }
+
+        // 문자열 처리
         if (char === '"') {
             let value = '';
-            i++; // skip first quote
+            i++; // 시작 따옴표 건너뛰기
             while (i < code.length && code[i] !== '"') {
                 value += code[i++];
             }
-            i++; // skip closing quote
+            i++; // 닫는 따옴표 건너뛰기
             tokens.push({ type: 'StringLiteral', value, position: i });
             continue;
         }
 
-        // 단어 추출
+        // 단어 추출 (키워드, 타입, 식별자, 불리언)
         const wordMatch = /^[a-zA-Z_][a-zA-Z0-9_]*/.exec(code.slice(i));
         if (wordMatch) {
             const word = wordMatch[0];
 
-            // 키워드인지 확인
             if (word === 'mut' || word === 'out') {
                 tokens.push({ type: 'Keyword', value: word, position: i });
             } else if (['str', 'num', 'bool'].includes(word)) {
@@ -69,20 +82,20 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
-        // 연산자
-        if ('=+-*/'.includes(char)) {
-            tokens.push({ type: 'Operator', value: char, position: i });
-            i++;
-            continue;
-        }
-
-        // 숫자
+        // 숫자 처리
         if (/\d/.test(char)) {
             let num = '';
             while (i < code.length && /\d/.test(code[i])) {
                 num += code[i++];
             }
             tokens.push({ type: 'NumberLiteral', value: num, position: i });
+            continue;
+        }
+
+        // 연산자 처리
+        if ('=+-*/'.includes(char)) {
+            tokens.push({ type: 'Operator', value: char, position: i });
+            i++;
             continue;
         }
 

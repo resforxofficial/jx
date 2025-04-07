@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import { transform } from './compiler/transform.js';
 import { spawnSync } from 'child_process';
+
+import { tokenize } from './compiler/tokens.js';
+import { validate } from './compiler/validator.js';
+import { parse } from './compiler/parser.js';
+import { transform } from './compiler/transform.js';
 
 const inputPath = process.argv[2];
 
@@ -12,11 +16,21 @@ if (!inputPath) {
 
 const raw = fs.readFileSync(inputPath, 'utf-8');
 
-const jsCode = `import { print } from "./src/runtime/index.ts";
+// 1. 토크나이징
+const tokens = tokenize(raw);
 
-${transform(raw)}`;
+// 2. 문법 검사
+validate(tokens);
 
+// 3. 파싱 검사 (패턴)
+parse(tokens);
+
+// 4. JS 코드로 변환
+const jsCode = transform(tokens);
+
+// 5. 변환 결과 저장
 const outputPath = path.resolve('./.tx_temp_output.ts');
 fs.writeFileSync(outputPath, jsCode);
 
+// 6. 실행
 spawnSync('npx', ['tsx', outputPath], { stdio: 'inherit' });
