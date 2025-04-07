@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@types/node": "^22.14.0"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/cli.ts"
+  }
+}

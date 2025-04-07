@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "NodeNext", // ESM 사용
+        "moduleResolution": "NodeNext",
+        "lib": [
+            "ES2020",
+            "DOM"
+        ],
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strict": true,
+        "declaration": true, // 타입 선언 만들고 싶으면 유지
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": false,
+        "outDir": "./dist", 
+        "rootDir": "./src", 
+        "noEmit": false 
+    },
+    "include": [
+        "src"
+    ]
+}

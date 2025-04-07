@@ -1,0 +1,9 @@
+node_modules
+dist
+
+.env
+*.env
+
+__vscode__
+.tx_temp_output.js
+.tx_temp_output.ts
