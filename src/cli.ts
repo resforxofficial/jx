@@ -16,7 +16,7 @@ const jsCode = `import { print } from "./src/runtime/index.ts";
 
 ${transform(raw)}`;
 
-const outputPath = path.resolve('./tx_temp_output.ts');
+const outputPath = path.resolve('./.tx_temp_output.ts');
 fs.writeFileSync(outputPath, jsCode);
 
 spawnSync('npx', ['tsx', outputPath], { stdio: 'inherit' });
