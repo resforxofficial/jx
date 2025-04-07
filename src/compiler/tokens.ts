@@ -69,9 +69,12 @@ export function tokenize(code: string): Token[] {
         if (wordMatch) {
             const word = wordMatch[0];
 
-            if (['mut', 'out'].includes(word)) {
+            // 키워드인지 확인
+            if (['mut', 'out', 'input'].includes(word)) {
                 tokens.push({ type: 'Keyword', value: word, position: i });
-            } else if (['str', 'int', 'bool'].includes(word)) {
+            }
+
+            else if (['str', 'int', 'bool'].includes(word)) {
                 tokens.push({ type: 'Type', value: word, position: i });
             } else if (word === 'true' || word === 'false') {
                 tokens.push({ type: 'BooleanLiteral', value: word, position: i });
