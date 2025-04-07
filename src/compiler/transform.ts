@@ -3,6 +3,7 @@ import type { Token } from './tokens.ts';
 export function transform(tokens: Token[]): string {
     let i = 0;
     const output: string[] = [];
+    let usedPrompt = false;
 
     const next = () => tokens[i++];
     const peek = () => tokens[i];
@@ -10,6 +11,7 @@ export function transform(tokens: Token[]): string {
     while (i < tokens.length) {
         const token = peek();
 
+        // 변수 선언
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
             const type = next(); // str, int, bool
@@ -31,6 +33,7 @@ export function transform(tokens: Token[]): string {
             }
         }
 
+        // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
             const valueToken = next();
@@ -44,9 +47,35 @@ export function transform(tokens: Token[]): string {
             }
         }
 
+        // input 문
+        else if (token.type === 'Identifier') {
+            const identifier = next(); // 변수명
+            const assign = next(); // =
+            const keyword = next(); // input
+            const str = next();     // "내용"
+            const semi = next();    // ;
+
+            if (
+                assign.type === 'Operator' && assign.value === '=' &&
+                keyword.type === 'Keyword' && keyword.value === 'input' &&
+                str.type === 'StringLiteral' &&
+                semi.value === ';'
+            ) {
+                usedPrompt = true;
+                output.push(`${identifier.value} = promptSync(${JSON.stringify(str.value)});`);
+            } else {
+                throw new Error(`transform 에러: 잘못된 input 문입니다 (${identifier.value})`);
+            }
+        }
+
         else {
             throw new Error(`transform 에러: 지원하지 않는 문장입니다 (${token.value})`);
         }
+    }
+
+    // input이 한 번이라도 사용되었다면 상단에 import 추가
+    if (usedPrompt) {
+        output.unshift("import promptSync from 'prompt-sync';");
     }
 
     return output.join('\n');

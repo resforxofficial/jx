@@ -1,0 +1,2 @@
+mut str a;
+a = input "enter here: ";

@@ -1,4 +1,3 @@
-// parser.ts
 import type { Token } from './tokens.ts';
 
 export function parse(tokens: Token[]): void {
@@ -19,7 +18,7 @@ export function parse(tokens: Token[]): void {
 
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
-            expect('Type'); // str, num, bool
+            expect('Type'); // str, int, bool
             const ident = expect('Identifier');
 
             if (/^[0-9]/.test(ident.value)) {
@@ -44,6 +43,15 @@ export function parse(tokens: Token[]): void {
             if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
                 throw new Error(`out 다음에는 변수명이나 리터럴이 와야 합니다: ${valueToken.value}`);
             }
+            expect('Punctuation', ';');
+        }
+
+        // ✅ input 문법 처리: a = input "msg";
+        else if (token.type === 'Identifier') {
+            next(); // 변수명
+            expect('Operator', '=');
+            expect('Keyword', 'input');
+            expect('StringLiteral');
             expect('Punctuation', ';');
         }
 
