@@ -1,7 +1,0 @@
-mut str a;
-mut int b = 123;
-mut bool c = true;
-mut str username = "james";
-out username;
-out b;
-out c;

@@ -2,7 +2,9 @@ import type { Token } from './tokens.ts';
 
 export function validate(tokens: Token[]): void {
     let i = 0;
-    const declaredVars = new Set<string>();
+
+    // 변수명 → 정의되었는지 여부 (true = 값 있음, false = 선언만 됨)
+    const declaredVars = new Map<string, boolean>();
 
     const next = () => tokens[i++];
     const peek = () => tokens[i];
@@ -15,13 +17,16 @@ export function validate(tokens: Token[]): void {
             const type = next(); // str, int, bool
             const identifier = next(); // 변수명
 
-            declaredVars.add(identifier.value);
-
+            let defined = false;
             const maybeEq = peek();
+
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
                 next(); // value
+                defined = true;
             }
+
+            declaredVars.set(identifier.value, defined);
 
             const semi = next();
             if (semi.value !== ';') {
@@ -33,8 +38,13 @@ export function validate(tokens: Token[]): void {
             next(); // out
             const target = next(); // Identifier 또는 Literal
 
-            if (target.type === 'Identifier' && !declaredVars.has(target.value)) {
-                throw new Error(`변수 "${target.value}" 는 선언되지 않았습니다`);
+            if (target.type === 'Identifier') {
+                if (!declaredVars.has(target.value)) {
+                    throw new Error(`변수 "${target.value}" 는 선언되지 않았습니다`);
+                }
+                if (!declaredVars.get(target.value)) {
+                    throw new Error(`변수 "${target.value}" 는 값이 정의되지 않았습니다`);
+                }
             }
 
             const semi = next();
