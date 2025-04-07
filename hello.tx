@@ -1,4 +1,7 @@
 mut str a;
-mut str b = "hello";
+mut int b = 123;
+mut bool c = true;
+mut str username = "james";
+out username;
 out b;
-out "world";
+out c;

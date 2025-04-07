@@ -1,4 +1,3 @@
-// transform.ts
 import type { Token } from './tokens.ts';
 
 export function transform(tokens: Token[]): string {
@@ -13,18 +12,22 @@ export function transform(tokens: Token[]): string {
 
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
-            const type = next(); // str, num, bool
+            const type = next(); // str, int, bool
             const identifier = next(); // 변수명
             const maybeEq = peek();
 
+            const tsType = mapTypeToTs(type.value);
+
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
-                const value = next();
+                const value = next(); // "hello", 123, true 등
                 next(); // ;
-                output.push(`let ${identifier.value} = ${JSON.stringify(value.value)};`);
+
+                const formattedValue = formatValueByType(value, type.value);
+                output.push(`let ${identifier.value}: ${tsType} = ${formattedValue};`);
             } else {
                 next(); // ;
-                output.push(`let ${identifier.value};`);
+                output.push(`let ${identifier.value}: ${tsType};`);
             }
         }
 
@@ -32,10 +35,12 @@ export function transform(tokens: Token[]): string {
             next(); // out
             const valueToken = next();
             next(); // ;
+
             if (valueToken.type === 'Identifier') {
                 output.push(`console.log(${valueToken.value});`);
             } else {
-                output.push(`console.log(${JSON.stringify(valueToken.value)});`);
+                const outValue = formatValueByType(valueToken, detectLiteralType(valueToken));
+                output.push(`console.log(${outValue});`);
             }
         }
 
@@ -45,4 +50,23 @@ export function transform(tokens: Token[]): string {
     }
 
     return output.join('\n');
+}
+
+function mapTypeToTs(type: string): string {
+    if (type === 'str') return 'string';
+    if (type === 'int') return 'number';
+    if (type === 'bool') return 'boolean';
+    return 'any';
+}
+
+function formatValueByType(token: Token, type: string): string {
+    if (type === 'str') return JSON.stringify(token.value);
+    return token.value;
+}
+
+function detectLiteralType(token: Token): string {
+    if (token.type === 'StringLiteral') return 'str';
+    if (token.type === 'NumberLiteral') return 'int';
+    if (token.type === 'BooleanLiteral') return 'bool';
+    return 'any';
 }

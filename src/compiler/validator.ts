@@ -1,36 +1,50 @@
 import type { Token } from './tokens.ts';
 
-const RESERVED_KEYWORDS = ['mut', 'out', 'str'];
-
 export function validate(tokens: Token[]): void {
-    tokens.forEach((token, i) => {
-        // 변수명 검사
-        if (token.type === 'Identifier') {
-            if (!/^[_a-zA-Z][_a-zA-Z0-9]*$/.test(token.value)) {
-                throw new Error(`잘못된 변수명: '${token.value}' (숫자로 시작하거나 특수문자 사용 금지)`);
+    let i = 0;
+    const declaredVars = new Set<string>();
+
+    const next = () => tokens[i++];
+    const peek = () => tokens[i];
+
+    while (i < tokens.length) {
+        const token = peek();
+
+        if (token.type === 'Keyword' && token.value === 'mut') {
+            next(); // mut
+            const type = next(); // str, int, bool
+            const identifier = next(); // 변수명
+
+            declaredVars.add(identifier.value);
+
+            const maybeEq = peek();
+            if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
+                next(); // =
+                next(); // value
             }
 
-            if (RESERVED_KEYWORDS.includes(token.value)) {
-                throw new Error(`예약어 '${token.value}' 는 변수명으로 사용할 수 없습니다.`);
+            const semi = next();
+            if (semi.value !== ';') {
+                throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
 
-        // 키워드 + 타입 붙은 경우 예외 (예: mutstr)
-        if (token.type === 'Identifier' && i > 0) {
-            const prev = tokens[i - 1];
-            if (prev.type === 'Keyword' && token.value.startsWith('str')) {
-                throw new Error(`'${prev.value}${token.value}' 는 유효하지 않은 문법입니다. '${prev.value} str' 처럼 띄어쓰기를 해주세요.`);
+        else if (token.type === 'Keyword' && token.value === 'out') {
+            next(); // out
+            const target = next(); // Identifier 또는 Literal
+
+            if (target.type === 'Identifier' && !declaredVars.has(target.value)) {
+                throw new Error(`변수 "${target.value}" 는 선언되지 않았습니다`);
+            }
+
+            const semi = next();
+            if (semi.value !== ';') {
+                throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
 
-        // 세미콜론 누락 검사 (간단한 방식: 다음 줄 시작이 Keyword인데 이전 줄 마지막이 세미콜론이 아님)
-        if (
-            i < tokens.length - 1 &&
-            token.type === 'Identifier' &&
-            tokens[i + 1].type === 'Keyword' &&
-            tokens[i - 1]?.value !== ';'
-        ) {
-            throw new Error(`세미콜론 누락: '${token.value}' 뒤에 ';' 이 필요합니다.`);
+        else {
+            throw new Error(`알 수 없는 문장: ${token.value}`);
         }
-    });
+    }
 }
