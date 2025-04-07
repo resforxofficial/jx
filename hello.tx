@@ -1,2 +1,2 @@
-mut str a = "hello world";
-out a;
+mut str a;
+out "hello world";

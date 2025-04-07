@@ -18,28 +18,36 @@ export function parse(tokens: Token[]): void {
         const token = peek();
 
         if (token.type === 'Keyword' && token.value === 'mut') {
-            // 변수 선언 파싱
-            next(); // 'mut'
-            expect('Type'); // 'str'
-            const ident = expect('Identifier'); // 변수명
+            next(); // mut
+            expect('Type'); // str, num, bool
+            const ident = expect('Identifier');
 
             if (/^[0-9]/.test(ident.value)) {
                 throw new Error(`변수명은 숫자로 시작할 수 없습니다: ${ident.value}`);
             }
 
-            expect('Operator', '='); // '='
-            const valueToken = next();
-
-            if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
-                throw new Error(`잘못된 값: ${valueToken.value}`);
+            const maybeEq = peek();
+            if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
+                next(); // =
+                const valueToken = next();
+                if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
+                    throw new Error(`잘못된 값: ${valueToken.value}`);
+                }
             }
 
-            expect('Punctuation', ';'); // ';'
-        } else if (token.type === 'Keyword' && token.value === 'out') {
-            next(); // 'out'
-            expect('Identifier'); // 출력할 변수명
             expect('Punctuation', ';');
-        } else {
+        }
+
+        else if (token.type === 'Keyword' && token.value === 'out') {
+            next(); // out
+            const valueToken = next();
+            if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
+                throw new Error(`out 다음에는 변수명이나 리터럴이 와야 합니다: ${valueToken.value}`);
+            }
+            expect('Punctuation', ';');
+        }
+
+        else {
             throw new Error(`지원되지 않는 문법 시작: ${token.value}`);
         }
     }
