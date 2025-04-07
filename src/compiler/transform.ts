@@ -62,7 +62,7 @@ export function transform(tokens: Token[]): string {
                 semi.value === ';'
             ) {
                 usedPrompt = true;
-                output.push(`${identifier.value} = promptSync(${JSON.stringify(str.value)});`);
+                output.push(`${identifier.value} = prompt(${JSON.stringify(str.value)});`);
             } else {
                 throw new Error(`transform 에러: 잘못된 input 문입니다 (${identifier.value})`);
             }
@@ -75,7 +75,7 @@ export function transform(tokens: Token[]): string {
 
     // input이 한 번이라도 사용되었다면 상단에 import 추가
     if (usedPrompt) {
-        output.unshift("import promptSync from 'prompt-sync';");
+        output.unshift("import promptSync from 'prompt-sync';\nconst prompt = promptSync();");
     }
 
     return output.join('\n');
