@@ -15,6 +15,14 @@ export function transform(tokens: Token[]): string {
         }
     }
 
+    const expect = (type: string, value?: string) => {
+        const token = next();
+        if (!token || token.type !== type || (value && token.value !== value)) {
+            throw new Error(`transform 에러: ${type}${value ? ` "${value}"` : ''} 가 필요하지만 ${token?.value ?? 'EOF'} 를 받음`);
+        }
+        return token;
+    };
+
     while (i < tokens.length) {
         const token = peek();
 
@@ -90,6 +98,91 @@ export function transform(tokens: Token[]): string {
                 output.push(`let ${identifier.value}: ${tsType};`);
             }
         }
+
+        // if 문
+        else if (token.type === 'Keyword' && token.value === 'if') {
+            next(); // consume 'if'
+
+            expect('ParenOpen', '(');
+            let condition = '';
+
+            // 조건 표현식 파싱
+            let expectingOperand = true;
+            while (true) {
+                const current = peek();
+                if (!current) throw new Error('if 조건이 비정상적으로 종료되었습니다');
+                if (current.type === 'ParenClose') {
+                    next(); // consume ')'
+                    break;
+                }
+
+                if (expectingOperand) {
+                    if (!['Identifier', 'NumberLiteral', 'BooleanLiteral'].includes(current.type)) {
+                        throw new Error(`if 조건에서 잘못된 피연산자: ${current.value}`);
+                    }
+                    condition += current.value;
+                    next();
+                    expectingOperand = false;
+                } else {
+                    if (current.type !== 'Operator') {
+                        throw new Error(`if 조건에서 연산자가 필요합니다: ${current.value}`);
+                    }
+                    condition += ` ${current.value} `;
+                    next();
+                    expectingOperand = true;
+                }
+            }
+
+            // { 블록 시작
+            expect('Punctuation', '{');
+            output.push(`if (${condition}) {`);
+
+            // 블록 내 구문 처리
+            while (true) {
+                const current = peek();
+                if (!current) throw new Error('if 블록이 닫히지 않았습니다');
+                if (current.type === 'Punctuation' && current.value === '}') {
+                    next(); // consume '}'
+                    break;
+                }
+
+                // 재귀적으로 transform 호출 대신 기존 루프 로직을 재활용
+                // => 단순히 한 문장 단위 처리
+                const innerStart = i;
+                const innerResult = transform(tokens.slice(innerStart));
+                output.push(innerResult);
+                break; // 단순 구현을 위해 한 줄 처리
+            }
+
+            output.push('}');
+
+            // else 블록
+            const maybeElse = peek();
+            if (maybeElse && maybeElse.type === 'Keyword' && maybeElse.value === 'else') {
+                next(); // consume 'else'
+                expect('Punctuation', '{');
+                output.push('else {');
+
+                while (true) {
+                    const current = peek();
+                    if (!current) throw new Error('else 블록이 닫히지 않았습니다');
+                    if (current.type === 'Punctuation' && current.value === '}') {
+                        next(); // consume '}'
+                        break;
+                    }
+
+                    const innerStart = i;
+                    const innerResult = transform(tokens.slice(innerStart));
+                    output.push(innerResult);
+                    break;
+                }
+
+                output.push('}');
+            }
+
+            continue;
+        }
+
 
         // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {

@@ -1,5 +1,3 @@
-// tokenize.ts
-
 export type TokenType =
     | 'Keyword'          // mut, out 등
     | 'Type'             // str, int, bool
@@ -11,6 +9,8 @@ export type TokenType =
     | 'Punctuation'      // ;, :, .
     | 'ParenOpen'        // (
     | 'ParenClose'       // )
+    | 'BraceOpen'        // {
+    | 'BraceClose'       // }
     | 'Unknown';         // 알 수 없는 문법
 
 export interface Token {
@@ -45,6 +45,19 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
+        // 중괄호
+        if (char === '{') {
+            tokens.push({ type: 'BraceOpen', value: '{', position: i });
+            i++;
+            continue;
+        }
+
+        if (char === '}') {
+            tokens.push({ type: 'BraceClose', value: '}', position: i });
+            i++;
+            continue;
+        }
+
         // 구두점
         if ([';', ':', '.'].includes(char)) {
             tokens.push({ type: 'Punctuation', value: char, position: i });
@@ -70,7 +83,7 @@ export function tokenize(code: string): Token[] {
             const word = wordMatch[0];
 
             // 키워드인지 확인
-            if (['mut', 'out', 'input'].includes(word)) {
+            if (['mut', 'out', 'input', 'if', 'else'].includes(word)) {
                 tokens.push({ type: 'Keyword', value: word, position: i });
             }
 
@@ -94,6 +107,21 @@ export function tokenize(code: string): Token[] {
             }
             tokens.push({ type: 'NumberLiteral', value: num, position: i });
             continue;
+        }
+
+        // 비교 연산자
+        if (['>', '<', '=', '!'].includes(char)) {
+            let op = char;
+            if (code[i + 1] === '=') {
+                op += '=';
+                i++;
+            }
+
+            if (['==', '!=', '>=', '<='].includes(op) || ['>', '<'].includes(op)) {
+                tokens.push({ type: 'Operator', value: op, position: i });
+                i++;
+                continue;
+            }
         }
 
         // 연산자

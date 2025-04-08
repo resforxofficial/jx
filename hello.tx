@@ -1,0 +1,4 @@
+mut int a = input "here: ";
+if (a > 3) {
+    out "True";
+}

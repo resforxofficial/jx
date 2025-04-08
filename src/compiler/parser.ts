@@ -81,12 +81,57 @@ export function parse(tokens: Token[]): void {
                     next(); // consume operand
                     expectingOperand = false;
                 } else {
-                    if (current.type !== 'Operator') {
+                    if (current.type !== 'Operator' || !['+', '-', '*', '/'].includes(current.value)) {
                         throw new Error(`out 구문에서 연산자가 필요합니다: ${current.value}`);
                     }
                     next(); // consume operator
                     expectingOperand = true;
                 }
+            }
+        }
+
+        // 조건문 (if)
+        else if (token.type === 'Keyword' && token.value === 'if') {
+            next(); // 'if'
+
+            expect('ParenOpen'); // (
+
+            const left = next();
+            const operator = next();
+            const right = next();
+
+            if (!['Identifier', 'NumberLiteral', 'BooleanLiteral', 'StringLiteral'].includes(left.type)) {
+                throw new Error(`조건식의 왼쪽이 잘못됨: ${left.value}`);
+            }
+
+            if (operator.type !== 'Operator' || !['==', '!=', '<', '>', '<=', '>='].includes(operator.value)) {
+                throw new Error(`조건문에 잘못된 연산자: ${operator.value}`);
+            }
+
+            if (!['Identifier', 'NumberLiteral', 'BooleanLiteral', 'StringLiteral'].includes(right.type)) {
+                throw new Error(`조건식의 오른쪽이 잘못됨: ${right.value}`);
+            }
+
+            expect('ParenClose'); // )
+            expect('BraceOpen'); // {
+
+            // 중괄호 내부 파싱 - 간단하게 ; 올 때까지 계속 넘겨주는 방식
+            while (peek()?.type !== 'BraceClose') {
+                next(); // 이건 추후 제대로 parseBlock 같은 걸로 구조화 가능
+            }
+
+            expect('BraceClose'); // }
+
+            // else 처리 (선택)
+            if (peek()?.type === 'Keyword' && peek()?.value === 'else') {
+                next(); // 'else'
+                expect('BraceOpen');
+
+                while (peek()?.type !== 'BraceClose') {
+                    next();
+                }
+
+                expect('BraceClose');
             }
         }
 
