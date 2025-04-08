@@ -15,11 +15,10 @@ export function transform(tokens: Token[]): string {
         }
     }
 
-
     while (i < tokens.length) {
         const token = peek();
 
-        // 변수 선언
+        // 변수 선언 처리
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
 
@@ -27,7 +26,8 @@ export function transform(tokens: Token[]): string {
             let type: Token | null = null;
             let identifier: Token;
 
-            if (maybeTypeOrId.type === 'Identifier' && ['int', 'str', 'bool'].includes(maybeTypeOrId.value)) {
+            // ✅ 여기 고침: Type 토큰 확인
+            if (maybeTypeOrId.type === 'Type') {
                 type = maybeTypeOrId;
                 identifier = next();
             } else {
@@ -40,14 +40,13 @@ export function transform(tokens: Token[]): string {
 
                 const maybeInput = peek();
 
-                // 한 줄 입력 선언: mut [타입] a = input "내용";
+                // 🧾 한 줄 입력: mut [타입] a = input "내용";
                 if (maybeInput?.type === 'Keyword' && maybeInput.value === 'input') {
                     next(); // input
                     const str = next(); // "내용"
-                    expectSemicolon();  // ;
+                    expectSemicolon();
 
                     usedPrompt = true;
-
                     const promptCall = `prompt(${JSON.stringify(str.value)})`;
 
                     let wrappedPrompt: string;
@@ -67,9 +66,9 @@ export function transform(tokens: Token[]): string {
                     output.push(`let ${identifier.value}: ${tsType} = ${wrappedPrompt};`);
                 }
 
-                // 일반 리터럴 초기화
+                // 🔢 일반 리터럴 초기화
                 else {
-                    const value = next(); // 예: "hello" 또는 123
+                    const value = next();
                     expectSemicolon();
 
                     const inferredType = type ? type.value : detectLiteralType(value);
@@ -80,7 +79,7 @@ export function transform(tokens: Token[]): string {
                 }
             }
 
-            // 초기화 없이 선언만
+            // 🔒 선언만 (초기화 없이)
             else {
                 expectSemicolon();
                 const tsType = type ? mapTypeToTs(type.value) : 'any';
@@ -88,18 +87,17 @@ export function transform(tokens: Token[]): string {
             }
         }
 
-        // 출력문
+        // 📤 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
 
-            // 연산 처리: Identifier + Identifier (또는 리터럴)
             const left = next();
             const maybeOp = peek();
 
             if (maybeOp?.type === 'Operator') {
                 const op = next();
                 const right = next();
-                expectSemicolon(); // ; 확인 함수 따로 만드는 게 깔끔
+                expectSemicolon();
 
                 const leftVal = formatValueByType(left, detectLiteralType(left));
                 const rightVal = formatValueByType(right, detectLiteralType(right));
@@ -107,6 +105,7 @@ export function transform(tokens: Token[]): string {
             } else {
                 const valueToken = left;
                 expectSemicolon();
+
                 if (valueToken.type === 'Identifier') {
                     output.push(`console.log(${valueToken.value});`);
                 } else {
@@ -116,13 +115,13 @@ export function transform(tokens: Token[]): string {
             }
         }
 
-        // input 문
+        // 👂 input 문 단독 사용 (변수 선언 아님)
         else if (token.type === 'Identifier') {
-            const identifier = next(); // 변수명
-            const assign = next(); // =
-            const keyword = next(); // input
-            const str = next();     // "내용"
-            const semi = next();    // ;
+            const identifier = next();
+            const assign = next();
+            const keyword = next();
+            const str = next();
+            const semi = next();
 
             if (
                 assign.type === 'Operator' && assign.value === '=' &&
@@ -137,12 +136,13 @@ export function transform(tokens: Token[]): string {
             }
         }
 
+        // 🚫 그 외
         else {
             throw new Error(`transform 에러: 지원하지 않는 문장입니다 (${token.value})`);
         }
     }
 
-    // input이 한 번이라도 사용되었다면 상단에 import 추가
+    // 📦 prompt-sync import 삽입
     if (usedPrompt) {
         output.unshift("import promptSync from 'prompt-sync';\nconst prompt = promptSync();");
     }

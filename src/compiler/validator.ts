@@ -1,11 +1,25 @@
 import type { Token } from './tokens.ts';
 
 export function validate(tokens: Token[]): void {
+    console.log("🧩 전체 토큰 목록:");
+    tokens.forEach((t, idx) => {
+        console.log(`${idx}: ${t.type} (${t.value})`);
+    });
+
     let i = 0;
     const declaredVars = new Set<string>();
 
-    const next = () => tokens[i++];
-    const peek = () => tokens[i];
+    const next = () => {
+        const tok = tokens[i++];
+        console.log(`🟡 next():`, tok);
+        return tok;
+    };
+
+    const peek = () => {
+        const tok = tokens[i];
+        console.log(`🔵 peek():`, tok);
+        return tok;
+    };
 
     while (i < tokens.length) {
         const token = peek();
@@ -17,7 +31,8 @@ export function validate(tokens: Token[]): void {
 
             let type: Token | undefined = undefined;
 
-            if (maybeType.type === 'Identifier' && ['int', 'str', 'bool'].includes(maybeType.value)) {
+            // ✅ 타입이 Type일 경우만 처리
+            if (maybeType.type === 'Type') {
                 type = next(); // 타입
             }
 
@@ -37,25 +52,24 @@ export function validate(tokens: Token[]): void {
                         throw new Error(`입력 문구는 문자열로 제공되어야 합니다 (${content.value})`);
                     }
 
-                    const semi = next();
+                    const semi = next(); // ❗ 세미콜론 체크
                     if (semi.type !== 'Punctuation' || semi.value !== ';') {
                         throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
                     }
 
-                    continue; // 여기서 세미콜론까지 끝냈으니까 아래로 내려가지 않게
+                    continue; // ✅ 여기서 끝내야 아래에서 또 세미콜론 검사 안 함
                 }
 
-                else {
-                    const value = next();
-                    if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
-                        throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
-                    }
+                // input 아니고 일반 리터럴 초기화라면
+                const value = next();
+                if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
+                    throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
                 }
             }
 
+            // 아래 세미콜론 체크는 input 이나 리터럴 외 경우를 위한 것
             const semi = next();
             if (semi.type !== 'Punctuation' || semi.value !== ';') {
-                console.log('🚨 세미콜론 에러 직전 상태:', { semi, 현재토큰: token, i });
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
