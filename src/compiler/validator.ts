@@ -20,25 +20,26 @@ export function validate(tokens: Token[]): void {
             const maybeEq = peek();
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
-                next(); // value
+
+                const maybeInput = peek();
+                if (maybeInput.type === 'Keyword' && maybeInput.value === 'input') {
+                    next(); // input
+
+                    const content = next();
+                    if (content.type !== 'StringLiteral') {
+                        throw new Error(`입력 문구는 문자열로 제공되어야 합니다 (${content.value})`);
+                    }
+
+                } else {
+                    const value = next(); // 일반 리터럴 값
+                    if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
+                        throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
+                    }
+                }
             }
 
             const semi = next();
-            if (semi.value !== ';') {
-                throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
-            }
-        }
-
-        else if (token.type === 'Keyword' && token.value === 'out') {
-            next(); // out
-            const target = next(); // Identifier 또는 Literal
-
-            if (target.type === 'Identifier' && !declaredVars.has(target.value)) {
-                throw new Error(`변수 "${target.value}" 는 선언되지 않았습니다`);
-            }
-
-            const semi = next();
-            if (semi.value !== ';') {
+            if (semi.type !== 'Punctuation' || semi.value !== ';') {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
@@ -70,6 +71,34 @@ export function validate(tokens: Token[]): void {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
+
+        else if (token.type === 'Keyword' && token.value === 'out') {
+            next(); // out
+            const left = next();
+
+            if (left.type === 'Identifier' && !declaredVars.has(left.value)) {
+                throw new Error(`변수 "${left.value}" 는 선언되지 않았습니다`);
+            }
+
+            const maybeOp = peek();
+            if (maybeOp?.type === 'Operator') {
+                // 연산식: a + b
+                next(); // 연산자
+                const right = next();
+                if (right.type === 'Identifier' && !declaredVars.has(right.value)) {
+                    throw new Error(`변수 "${right.value}" 는 선언되지 않았습니다`);
+                }
+                if (!['Identifier', 'StringLiteral', 'NumberLiteral'].includes(right.type)) {
+                    throw new Error(`out 문: 우항이 잘못됨 (${right.value})`);
+                }
+            }
+
+            const semi = next();
+            if (semi.type !== 'Punctuation' || semi.value !== ';') {
+                throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
+            }
+        }
+
 
         else {
             throw new Error(`알 수 없는 문장: ${token.value}`);

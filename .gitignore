@@ -5,6 +5,7 @@ dist
 *.env
 
 __vscode__
+.vscode/
 .tx_temp_output.js
 .tx_temp_output.ts
 

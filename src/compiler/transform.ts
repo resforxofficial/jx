@@ -8,6 +8,14 @@ export function transform(tokens: Token[]): string {
     const next = () => tokens[i++];
     const peek = () => tokens[i];
 
+    function expectSemicolon() {
+        const semi = next();
+        if (semi.type !== 'Punctuation' || semi.value !== ';') {
+            throw new Error('세미콜론이 필요합니다');
+        }
+    }
+
+
     while (i < tokens.length) {
         const token = peek();
 
@@ -22,12 +30,27 @@ export function transform(tokens: Token[]): string {
 
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
-                const value = next(); // "hello", 123, true 등
-                next(); // ;
 
-                const formattedValue = formatValueByType(value, type.value);
-                output.push(`let ${identifier.value}: ${tsType} = ${formattedValue};`);
-            } else {
+                const maybeInput = peek();
+
+                // 한 줄 입력 선언: mut str a = input "내용";
+                if (maybeInput?.type === 'Keyword' && maybeInput.value === 'input') {
+                    next(); // input
+                    const str = next(); // "내용"
+                    expectSemicolon();  // ;
+
+                    usedPrompt = true;
+                    output.push(`let ${identifier.value}: ${tsType} = prompt(${JSON.stringify(str.value)});`);
+                } else {
+                    const value = next(); // 일반 리터럴
+                    expectSemicolon();    // ;
+
+                    const formattedValue = formatValueByType(value, type.value);
+                    output.push(`let ${identifier.value}: ${tsType} = ${formattedValue};`);
+                }
+            }
+
+            else {
                 next(); // ;
                 output.push(`let ${identifier.value}: ${tsType};`);
             }
@@ -36,14 +59,28 @@ export function transform(tokens: Token[]): string {
         // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
-            const valueToken = next();
-            next(); // ;
 
-            if (valueToken.type === 'Identifier') {
-                output.push(`console.log(${valueToken.value});`);
+            // 연산 처리: Identifier + Identifier (또는 리터럴)
+            const left = next();
+            const maybeOp = peek();
+
+            if (maybeOp?.type === 'Operator') {
+                const op = next();
+                const right = next();
+                expectSemicolon(); // ; 확인 함수 따로 만드는 게 깔끔
+
+                const leftVal = formatValueByType(left, detectLiteralType(left));
+                const rightVal = formatValueByType(right, detectLiteralType(right));
+                output.push(`console.log(${leftVal} ${op.value} ${rightVal});`);
             } else {
-                const outValue = formatValueByType(valueToken, detectLiteralType(valueToken));
-                output.push(`console.log(${outValue});`);
+                const valueToken = left;
+                expectSemicolon();
+                if (valueToken.type === 'Identifier') {
+                    output.push(`console.log(${valueToken.value});`);
+                } else {
+                    const outValue = formatValueByType(valueToken, detectLiteralType(valueToken));
+                    output.push(`console.log(${outValue});`);
+                }
             }
         }
 

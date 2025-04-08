@@ -16,37 +16,70 @@ export function parse(tokens: Token[]): void {
     while (i < tokens.length) {
         const token = peek();
 
+        // 변수 선언 (mut)
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
-            expect('Type'); // str, int, bool
-            const ident = expect('Identifier');
+            const maybeTypeOrIdent = next();
 
-            if (/^[0-9]/.test(ident.value)) {
-                throw new Error(`변수명은 숫자로 시작할 수 없습니다: ${ident.value}`);
+            let identifier;
+
+            if (maybeTypeOrIdent.type === 'Type') {
+                identifier = expect('Identifier');
+            } else if (maybeTypeOrIdent.type === 'Identifier') {
+                identifier = maybeTypeOrIdent;
+            } else {
+                throw new Error(`mut 다음에는 타입 또는 식별자가 와야 합니다.`);
+            }
+
+            if (/^[0-9]/.test(identifier.value)) {
+                throw new Error(`변수명은 숫자로 시작할 수 없습니다: ${identifier.value}`);
             }
 
             const maybeEq = peek();
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
-                const valueToken = next();
-                if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
-                    throw new Error(`잘못된 값: ${valueToken.value}`);
+
+                const maybeInput = peek();
+                if (maybeInput.type === 'Keyword' && maybeInput.value === 'input') {
+                    next(); // input
+                    expect('StringLiteral');
+                    expect('Punctuation', ';'); // 여기서 세미콜론 기대
+                    continue;
+                } else {
+                    const valueToken = next();
+                    if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
+                        throw new Error(`잘못된 값: ${valueToken.value}`);
+                    }
+                    expect('Punctuation', ';'); // 일반 초기화일 경우
+                    continue;
                 }
             }
 
-            expect('Punctuation', ';');
+            expect('Punctuation', ';'); // 초기화 없이 선언만 한 경우
         }
 
+        // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
-            const valueToken = next();
-            if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(valueToken.type)) {
-                throw new Error(`out 다음에는 변수명이나 리터럴이 와야 합니다: ${valueToken.value}`);
+
+            const left = next();
+            if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(left.type)) {
+                throw new Error(`out 구문의 왼쪽 값이 유효하지 않습니다: ${left.value}`);
             }
-            expect('Punctuation', ';');
+
+            const maybeOperator = peek();
+            if (maybeOperator?.type === 'Operator') {
+                next(); // 연산자
+                const right = next();
+                if (!['Identifier', 'StringLiteral', 'NumberLiteral'].includes(right.type)) {
+                    throw new Error(`out 연산식 오류: 오른쪽 항이 유효하지 않음`);
+                }
+            }
+
+            expect('Punctuation', ';'); // 마지막 세미콜론
         }
 
-        // ✅ input 문법 처리: a = input "msg";
+        // 단순 input: a = input "문장";
         else if (token.type === 'Identifier') {
             next(); // 변수명
             expect('Operator', '=');
