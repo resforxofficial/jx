@@ -10,11 +10,18 @@ export function validate(tokens: Token[]): void {
     while (i < tokens.length) {
         const token = peek();
 
+        // mut 키워드 처리
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
-            const type = next(); // str, int, bool
-            const identifier = next(); // 변수명
+            const maybeType = peek();
 
+            let type: Token | undefined = undefined;
+
+            if (maybeType.type === 'Identifier' && ['int', 'str', 'bool'].includes(maybeType.value)) {
+                type = next(); // 타입
+            }
+
+            const identifier = next(); // 변수명
             declaredVars.add(identifier.value);
 
             const maybeEq = peek();
@@ -22,7 +29,7 @@ export function validate(tokens: Token[]): void {
                 next(); // =
 
                 const maybeInput = peek();
-                if (maybeInput.type === 'Keyword' && maybeInput.value === 'input') {
+                if (maybeInput?.type === 'Keyword' && maybeInput.value === 'input') {
                     next(); // input
 
                     const content = next();
@@ -30,8 +37,14 @@ export function validate(tokens: Token[]): void {
                         throw new Error(`입력 문구는 문자열로 제공되어야 합니다 (${content.value})`);
                     }
 
+                    const semi = next();
+                    if (semi.type !== 'Punctuation' || semi.value !== ';') {
+                        throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
+                    }
+
+                    continue;
                 } else {
-                    const value = next(); // 일반 리터럴 값
+                    const value = next();
                     if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
                         throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
                     }
@@ -44,6 +57,7 @@ export function validate(tokens: Token[]): void {
             }
         }
 
+        // 기존 변수 = input "문구";
         else if (token.type === 'Identifier') {
             const identifier = next(); // 변수명
 
@@ -72,6 +86,7 @@ export function validate(tokens: Token[]): void {
             }
         }
 
+        // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
             const left = next();
@@ -82,7 +97,6 @@ export function validate(tokens: Token[]): void {
 
             const maybeOp = peek();
             if (maybeOp?.type === 'Operator') {
-                // 연산식: a + b
                 next(); // 연산자
                 const right = next();
                 if (right.type === 'Identifier' && !declaredVars.has(right.value)) {
@@ -98,7 +112,6 @@ export function validate(tokens: Token[]): void {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
-
 
         else {
             throw new Error(`알 수 없는 문장: ${token.value}`);

@@ -22,36 +22,68 @@ export function transform(tokens: Token[]): string {
         // 변수 선언
         if (token.type === 'Keyword' && token.value === 'mut') {
             next(); // mut
-            const type = next(); // str, int, bool
-            const identifier = next(); // 변수명
+
+            const maybeTypeOrId = next();
+            let type: Token | null = null;
+            let identifier: Token;
+
+            if (maybeTypeOrId.type === 'Identifier' && ['int', 'str', 'bool'].includes(maybeTypeOrId.value)) {
+                type = maybeTypeOrId;
+                identifier = next();
+            } else {
+                identifier = maybeTypeOrId;
+            }
+
             const maybeEq = peek();
-
-            const tsType = mapTypeToTs(type.value);
-
             if (maybeEq?.type === 'Operator' && maybeEq.value === '=') {
                 next(); // =
 
                 const maybeInput = peek();
 
-                // 한 줄 입력 선언: mut str a = input "내용";
+                // 한 줄 입력 선언: mut [타입] a = input "내용";
                 if (maybeInput?.type === 'Keyword' && maybeInput.value === 'input') {
                     next(); // input
                     const str = next(); // "내용"
                     expectSemicolon();  // ;
 
                     usedPrompt = true;
-                    output.push(`let ${identifier.value}: ${tsType} = prompt(${JSON.stringify(str.value)});`);
-                } else {
-                    const value = next(); // 일반 리터럴
-                    expectSemicolon();    // ;
 
-                    const formattedValue = formatValueByType(value, type.value);
+                    const promptCall = `prompt(${JSON.stringify(str.value)})`;
+
+                    let wrappedPrompt: string;
+                    if (!type) {
+                        wrappedPrompt = promptCall;
+                    } else if (type.value === 'str') {
+                        wrappedPrompt = promptCall;
+                    } else if (type.value === 'int') {
+                        wrappedPrompt = `Number(${promptCall})`;
+                    } else if (type.value === 'bool') {
+                        wrappedPrompt = `(${promptCall} === "true")`;
+                    } else {
+                        wrappedPrompt = promptCall;
+                    }
+
+                    const tsType = type ? mapTypeToTs(type.value) : 'any';
+                    output.push(`let ${identifier.value}: ${tsType} = ${wrappedPrompt};`);
+                }
+
+                // 일반 리터럴 초기화
+                else {
+                    const value = next(); // 예: "hello" 또는 123
+                    expectSemicolon();
+
+                    const inferredType = type ? type.value : detectLiteralType(value);
+                    const tsType = type ? mapTypeToTs(type.value) : mapTypeToTs(inferredType);
+
+                    const formattedValue = formatValueByType(value, inferredType);
                     output.push(`let ${identifier.value}: ${tsType} = ${formattedValue};`);
                 }
             }
 
+            // 초기화 없이 선언만
             else {
-                next(); // ;
+                expectSemicolon();
+                const tsType = type ? mapTypeToTs(type.value) : 'any';
                 output.push(`let ${identifier.value}: ${tsType};`);
             }
         }
