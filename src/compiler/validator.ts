@@ -42,8 +42,10 @@ export function validate(tokens: Token[]): void {
                         throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
                     }
 
-                    continue;
-                } else {
+                    continue; // 여기서 세미콜론까지 끝냈으니까 아래로 내려가지 않게
+                }
+
+                else {
                     const value = next();
                     if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
                         throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
@@ -53,6 +55,7 @@ export function validate(tokens: Token[]): void {
 
             const semi = next();
             if (semi.type !== 'Punctuation' || semi.value !== ';') {
+                console.log('🚨 세미콜론 에러 직전 상태:', { semi, 현재토큰: token, i });
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
