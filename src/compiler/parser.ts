@@ -59,24 +59,35 @@ export function parse(tokens: Token[]): void {
         }
 
         // 출력문
+        // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
 
-            const left = next();
-            if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(left.type)) {
-                throw new Error(`out 구문의 왼쪽 값이 유효하지 않습니다: ${left.value}`);
-            }
+            let expectingOperand = true;
 
-            const maybeOperator = peek();
-            if (maybeOperator?.type === 'Operator') {
-                next(); // 연산자
-                const right = next();
-                if (!['Identifier', 'StringLiteral', 'NumberLiteral'].includes(right.type)) {
-                    throw new Error(`out 연산식 오류: 오른쪽 항이 유효하지 않음`);
+            while (true) {
+                const current = peek();
+
+                // 세미콜론 만나면 out 구문 종료
+                if (current.type === 'Punctuation' && current.value === ';') {
+                    next(); // consume ;
+                    break;
+                }
+
+                if (expectingOperand) {
+                    if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(current.type)) {
+                        throw new Error(`out 구문에서 피연산자가 유효하지 않습니다: ${current.value}`);
+                    }
+                    next(); // consume operand
+                    expectingOperand = false;
+                } else {
+                    if (current.type !== 'Operator') {
+                        throw new Error(`out 구문에서 연산자가 필요합니다: ${current.value}`);
+                    }
+                    next(); // consume operator
+                    expectingOperand = true;
                 }
             }
-
-            expect('Punctuation', ';'); // 마지막 세미콜론
         }
 
         // 단순 input: a = input "문장";

@@ -8,6 +8,7 @@ export function validate(tokens: Token[]): void {
 
     let i = 0;
     const declaredVars = new Set<string>();
+    const initializedVars = new Set<string>();
 
     const next = () => {
         const tok = tokens[i++];
@@ -31,7 +32,7 @@ export function validate(tokens: Token[]): void {
 
             let type: Token | undefined = undefined;
 
-            // ✅ 타입이 Type일 경우만 처리
+            // 타입이 Type일 경우 처리
             if (maybeType.type === 'Type') {
                 type = next(); // 타입
             }
@@ -52,29 +53,31 @@ export function validate(tokens: Token[]): void {
                         throw new Error(`입력 문구는 문자열로 제공되어야 합니다 (${content.value})`);
                     }
 
-                    const semi = next(); // ❗ 세미콜론 체크
+                    const semi = next(); // 세미콜론 확인
                     if (semi.type !== 'Punctuation' || semi.value !== ';') {
                         throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
                     }
 
-                    continue; // ✅ 여기서 끝내야 아래에서 또 세미콜론 검사 안 함
+                    initializedVars.add(identifier.value); // ✅ input 시 초기화 처리
+                    continue;
                 }
 
-                // input 아니고 일반 리터럴 초기화라면
+                // 일반 리터럴 초기화
                 const value = next();
                 if (!['StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(value.type)) {
                     throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
                 }
+
+                initializedVars.add(identifier.value); // ✅ 리터럴도 초기화 처리
             }
 
-            // 아래 세미콜론 체크는 input 이나 리터럴 외 경우를 위한 것
             const semi = next();
             if (semi.type !== 'Punctuation' || semi.value !== ';') {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
         }
 
-        // 기존 변수 = input "문구";
+        // 기존 변수 = input "문장";
         else if (token.type === 'Identifier') {
             const identifier = next(); // 변수명
 
@@ -101,30 +104,55 @@ export function validate(tokens: Token[]): void {
             if (semi.value !== ';') {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }
+
+            initializedVars.add(identifier.value); // ✅ 대입되었으므로 초기화 처리
         }
 
         // 출력문
+        // 출력문
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
-            const left = next();
 
-            if (left.type === 'Identifier' && !declaredVars.has(left.value)) {
-                throw new Error(`변수 "${left.value}" 는 선언되지 않았습니다`);
+            let expectingOperand = true;
+
+            while (i < tokens.length) {
+                const curr = peek();
+
+                if (curr.type === 'Punctuation' && curr.value === ';') {
+                    break; // 세미콜론 만나면 출력문 끝
+                }
+
+                if (expectingOperand) {
+                    if (curr.type === 'Identifier') {
+                        if (!declaredVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
+                        }
+                        if (!initializedVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 초기화되지 않았습니다`);
+                        }
+                    }
+
+                    if (!['Identifier', 'StringLiteral', 'NumberLiteral'].includes(curr.type)) {
+                        throw new Error(`out 문에서 피연산자가 잘못되었습니다 (${curr.value})`);
+                    }
+
+                    next(); // 피연산자 통과
+                    expectingOperand = false;
+                } else {
+                    if (curr.type !== 'Operator') {
+                        throw new Error(`out 문에서 연산자가 필요합니다 (${curr.value})`);
+                    }
+
+                    next(); // 연산자 통과
+                    expectingOperand = true;
+                }
             }
 
-            const maybeOp = peek();
-            if (maybeOp?.type === 'Operator') {
-                next(); // 연산자
-                const right = next();
-                if (right.type === 'Identifier' && !declaredVars.has(right.value)) {
-                    throw new Error(`변수 "${right.value}" 는 선언되지 않았습니다`);
-                }
-                if (!['Identifier', 'StringLiteral', 'NumberLiteral'].includes(right.type)) {
-                    throw new Error(`out 문: 우항이 잘못됨 (${right.value})`);
-                }
+            if (expectingOperand) {
+                throw new Error('out 문 마지막에 피연산자가 필요합니다');
             }
 
-            const semi = next();
+            const semi = next(); // 세미콜론
             if (semi.type !== 'Punctuation' || semi.value !== ';') {
                 throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
             }

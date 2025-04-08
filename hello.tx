@@ -1,3 +1,0 @@
-mut int a = input "enter here: ";
-mut int b = input "enter here: ";
-out a + b;

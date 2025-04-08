@@ -67,13 +67,18 @@ export function transform(tokens: Token[]): string {
 
                 // 일반 리터럴 초기화
                 else {
-                    const value = next();
+                    const value = next(); // 예: "hello" 또는 123
+
+                    // ⛔ 타입 강제 체크 추가
+                    if (type && detectLiteralType(value) !== type.value) {
+                        throw new Error(`타입 불일치: '${type.value}' 타입에 '${value.value}' 값을 할당할 수 없습니다`);
+                    }
+
                     expectSemicolon();
 
                     const inferredType = type ? type.value : detectLiteralType(value);
                     const tsType = type ? mapTypeToTs(type.value) : mapTypeToTs(inferredType);
                     const formattedValue = formatValueByType(value, inferredType);
-
                     output.push(`let ${identifier.value}: ${tsType} = ${formattedValue};`);
                 }
             }
@@ -90,24 +95,43 @@ export function transform(tokens: Token[]): string {
         else if (token.type === 'Keyword' && token.value === 'out') {
             next(); // out
 
-            const left = next();
-            const maybeOp = peek();
+            let expression = '';
+            let expectingOperand = true;
 
-            if (maybeOp?.type === 'Operator') {
-                const op = next(); // +
-                const right = next();
-                expectSemicolon();
+            while (true) {
+                const current = peek();
 
-                output.push(`console.log(${left.value} ${op.value} ${right.value});`);
-            } else {
-                expectSemicolon();
-                if (left.type === 'Identifier') {
-                    output.push(`console.log(${left.value});`);
+                if (!current) throw new Error('예상치 못한 EOF');
+                if (current.type === 'Punctuation' && current.value === ';') {
+                    next(); // consume ';'
+                    break;
+                }
+
+                if (expectingOperand) {
+                    if (!['Identifier', 'StringLiteral', 'NumberLiteral', 'BooleanLiteral'].includes(current.type)) {
+                        throw new Error(`out 구문에서 피연산자가 유효하지 않습니다: ${current.value}`);
+                    }
+
+                    if (current.type === 'Identifier') {
+                        expression += current.value;
+                    } else {
+                        expression += formatValueByType(current, detectLiteralType(current));
+                    }
+
+                    next();
+                    expectingOperand = false;
                 } else {
-                    const outValue = formatValueByType(left, detectLiteralType(left));
-                    output.push(`console.log(${outValue});`);
+                    if (current.type !== 'Operator') {
+                        throw new Error(`out 구문에서 연산자가 필요합니다: ${current.value}`);
+                    }
+
+                    expression += ` ${current.value} `;
+                    next();
+                    expectingOperand = true;
                 }
             }
+
+            output.push(`console.log(${expression});`);
         }
 
         // 변수 = input "문장"; (타입 생략)
