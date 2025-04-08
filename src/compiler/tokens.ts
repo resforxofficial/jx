@@ -9,8 +9,6 @@ export type TokenType =
     | 'Punctuation'      // ;, :, .
     | 'ParenOpen'        // (
     | 'ParenClose'       // )
-    | 'BraceOpen'        // {
-    | 'BraceClose'       // }
     | 'Unknown';         // 알 수 없는 문법
 
 export interface Token {
@@ -47,13 +45,13 @@ export function tokenize(code: string): Token[] {
 
         // 중괄호
         if (char === '{') {
-            tokens.push({ type: 'BraceOpen', value: '{', position: i });
+            tokens.push({ type: 'Punctuation', value: '{', position: i });
             i++;
             continue;
         }
 
         if (char === '}') {
-            tokens.push({ type: 'BraceClose', value: '}', position: i });
+            tokens.push({ type: 'Punctuation', value: '}', position: i });
             i++;
             continue;
         }

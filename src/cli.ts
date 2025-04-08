@@ -22,11 +22,11 @@ const tokens = tokenize(raw);
 // 2. 문법 검사
 validate(tokens);
 
-// 3. 파싱 검사 (패턴)
-parse(tokens);
+// 3. 파싱 → AST 생성
+const ast = parse(tokens);
 
 // 4. JS 코드로 변환
-const jsCode = transform(tokens);
+const jsCode = transform(ast);
 
 // 5. 변환 결과 저장
 const outputPath = path.resolve('./.tx_temp_output.ts');

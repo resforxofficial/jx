@@ -175,7 +175,7 @@ export function validate(tokens: Token[], startIndex = 0): number {
                 }
 
                 const openBrace = next();
-                if ((openBrace.type !== 'Punctuation' && openBrace.type !== 'BraceOpen') || openBrace.value !== '{') {
+                if ((openBrace.type !== 'Punctuation') || openBrace.value !== '{') {
                     throw new Error(`if 문 뒤에는 { 가 필요합니다 (${openBrace.value})`);
                 }
 
