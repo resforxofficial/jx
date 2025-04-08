@@ -22,9 +22,16 @@ export function parse(tokens: Token[]): ASTNode[] {
         if (token.type === "Identifier") {
             return { type: "Identifier", name: token.value };
         } else if (token.type === "BooleanLiteral") {
+            // BooleanLiteral을 직접 처리
             return { type: "Literal", value: token.value === "true" };
+        } else if (token.type === "NumberLiteral") {
+            // 숫자 리터럴 처리
+            return { type: "Literal", value: Number(token.value) };
+        } else if (token.type === "StringLiteral") {
+            // 문자열 리터럴 처리
+            return { type: "Literal", value: token.value };
         } else {
-            return { type: "Literal", value: JSON.parse(token.value) };
+            throw new Error(`지원되지 않는 리터럴 타입: ${token.type}`);
         }
     }
 
@@ -94,7 +101,7 @@ export function parse(tokens: Token[]): ASTNode[] {
                         varType,
                         value: {
                             type: "Literal",
-                            value: makeExprNode(valueToken),
+                            value: (makeExprNode(valueToken) as LiteralNode).value,
                         },
                     });
                     continue;
@@ -134,9 +141,7 @@ export function parse(tokens: Token[]): ASTNode[] {
                         );
                     }
                     expressions.push(
-                        current.type === "Identifier"
-                            ? { type: "Identifier", name: current.value }
-                            : { type: "Literal", value: JSON.parse(current.value) }
+                        makeExprNode(current)
                     );
                     next();
                     expectingOperand = false;
