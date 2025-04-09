@@ -1,4 +1,6 @@
 mut int a = input "here: ";
-if (a > 3) {
-    out "True";
+mut int b = input "here: ";
+
+if (a + b > 10) {
+    out "abcd";
 }

@@ -1,6 +1,8 @@
 import type { Token } from "./tokens.ts";
 import type { ASTNode, LiteralNode, IdentifierNode } from "../types/types.ts";
 
+
+
 export function parse(tokens: Token[]): ASTNode[] {
     let i = 0;
     const ast: ASTNode[] = [];
