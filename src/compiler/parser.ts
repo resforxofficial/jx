@@ -1,7 +1,10 @@
 import type { Token } from "./tokens.ts";
-import type { ASTNode, LiteralNode, IdentifierNode } from "../types/types.ts";
-
-
+import type {
+    ASTNode,
+    LiteralNode,
+    IdentifierNode,
+    ExpressionNode,
+} from "../types/types.ts";
 
 export function parse(tokens: Token[]): ASTNode[] {
     let i = 0;
@@ -9,40 +12,141 @@ export function parse(tokens: Token[]): ASTNode[] {
 
     const next = () => tokens[i++];
     const peek = () => tokens[i];
+
     const expect = (type: string, value?: string) => {
         const token = next();
+
         if (!token || token.type !== type || (value && token.value !== value)) {
             throw new Error(
-                `파싱 에러: ${type}${value ? ` "${value}"` : ""} 가 필요하지만, ${token?.value ?? "EOF"
-                } 를 받음`
+                `파싱 에러: ${type}${value ? ` "${value}"` : ""
+                } 가 필요하지만, ${token?.value ?? "EOF"} 를 받음`,
             );
         }
+
         return token;
     };
 
-    function makeExprNode(token: Token): LiteralNode | IdentifierNode {
-        if (token.type === "Identifier") {
-            return { type: "Identifier", name: token.value };
-        } else if (token.type === "BooleanLiteral") {
-            // BooleanLiteral을 직접 처리
-            return { type: "Literal", value: token.value === "true" };
-        } else if (token.type === "NumberLiteral") {
-            // 숫자 리터럴 처리
-            return { type: "Literal", value: Number(token.value) };
-        } else if (token.type === "StringLiteral") {
-            // 문자열 리터럴 처리
-            return { type: "Literal", value: token.value };
-        } else {
-            throw new Error(`지원되지 않는 리터럴 타입: ${token.type}`);
-        }
+    // -----------------------------------
+    // Expression Parser
+    // -----------------------------------
+
+    function parseExpression(): ExpressionNode {
+        return parseComparison();
     }
+
+    function parseComparison(): ExpressionNode {
+        let left = parseTerm();
+
+        while (
+            peek()?.type === "Operator" &&
+            ["==", "!=", "<", ">", "<=", ">="].includes(peek()!.value)
+        ) {
+            const operator = next().value;
+            const right = parseTerm();
+
+            left = {
+                type: "BinaryExpression",
+                left,
+                operator,
+                right,
+            };
+        }
+
+        return left;
+    }
+
+    function parseTerm(): ExpressionNode {
+        let left = parseFactor();
+
+        while (peek()?.type === "Operator" && ["+", "-"].includes(peek()!.value)) {
+            const operator = next().value;
+            const right = parseFactor();
+
+            left = {
+                type: "BinaryExpression",
+                left,
+                operator,
+                right,
+            };
+        }
+
+        return left;
+    }
+
+    function parseFactor(): ExpressionNode {
+        let left = parsePrimary();
+
+        while (peek()?.type === "Operator" && ["*", "/"].includes(peek()!.value)) {
+            const operator = next().value;
+            const right = parsePrimary();
+
+            left = {
+                type: "BinaryExpression",
+                left,
+                operator,
+                right,
+            };
+        }
+
+        return left;
+    }
+
+    function parsePrimary(): ExpressionNode {
+        const token = next();
+
+        if (!token) {
+            throw new Error("예상치 못한 EOF");
+        }
+
+        if (token.type === "NumberLiteral") {
+            return {
+                type: "Literal",
+                value: Number(token.value),
+            };
+        }
+
+        if (token.type === "StringLiteral") {
+            return {
+                type: "Literal",
+                value: token.value,
+            };
+        }
+
+        if (token.type === "BooleanLiteral") {
+            return {
+                type: "Literal",
+                value: token.value === "true",
+            };
+        }
+
+        if (token.type === "Identifier") {
+            return {
+                type: "Identifier",
+                name: token.value,
+            };
+        }
+
+        if (token.type === "ParenOpen") {
+            const expr = parseExpression();
+            expect("ParenClose");
+            return expr;
+        }
+
+        throw new Error(`잘못된 표현식: ${token.value}`);
+    }
+
+    // -----------------------------------
+    // Block Parser
+    // -----------------------------------
 
     function parseBlock(): ASTNode[] {
         const block: Token[] = [];
         expect("Punctuation", "{");
         let braceCount = 1;
+
         while (i < tokens.length) {
             const t = next();
+
             if (t.type === "Punctuation") {
                 if (t.value === "{") braceCount++;
                 if (t.value === "}") braceCount--;
@@ -50,11 +154,20 @@ export function parse(tokens: Token[]): ASTNode[] {
             if (braceCount === 0) break;
             block.push(t);
         }
+
         return parse(block);
     }
 
+    // -----------------------------------
+    // Main Parser
+    // -----------------------------------
+
     while (i < tokens.length) {
         const token = peek();
+
+        // -------------------------
+        // Variable Declaration
+        // -------------------------
 
         if (token.type === "Keyword" && token.value === "mut") {
             next();
@@ -65,22 +178,28 @@ export function parse(tokens: Token[]): ASTNode[] {
             if (maybeTypeOrIdent.type === "Type") {
                 varType = maybeTypeOrIdent.value;
                 identifier = expect("Identifier");
-            } else if (maybeTypeOrIdent.type === "Identifier") {
+            }
+            
+            else if (maybeTypeOrIdent.type === "Identifier") {
                 identifier = maybeTypeOrIdent;
-            } else {
+            }
+            
+            else {
                 throw new Error(`mut 다음에는 타입 또는 식별자가 와야 합니다.`);
             }
 
             if (/^[0-9]/.test(identifier.value)) {
                 throw new Error(
-                    `변수명은 숫자로 시작할 수 없습니다: ${identifier.value}`
+                    `변수명은 숫자로 시작할 수 없습니다: ${identifier.value}`,
                 );
             }
 
             const maybeEq = peek();
+
             if (maybeEq?.type === "Operator" && maybeEq.value === "=") {
                 next();
                 const maybeInput = peek();
+
                 if (maybeInput.type === "Keyword" && maybeInput.value === "input") {
                     next();
                     const prompt = expect("StringLiteral").value;
@@ -90,65 +209,57 @@ export function parse(tokens: Token[]): ASTNode[] {
                         type: "VariableDeclaration",
                         name: identifier.value,
                         varType,
-                        value: { type: "InputExpression", promptText: prompt },
+                        value: {
+                            type: "InputExpression",
+                            promptText: prompt,
+                        },
                     });
                     continue;
+
                 } else {
-                    const valueToken = next();
+                    const value = parseExpression();
                     expect("Punctuation", ";");
 
                     ast.push({
                         type: "VariableDeclaration",
                         name: identifier.value,
                         varType,
-                        value: {
-                            type: "Literal",
-                            value: (makeExprNode(valueToken) as LiteralNode).value,
-                        },
+                        value,
                     });
+
                     continue;
                 }
             }
-
             expect("Punctuation", ";");
+
             ast.push({
                 type: "VariableDeclaration",
                 name: identifier.value,
                 varType,
             });
-        } else if (token.type === "Keyword" && token.value === "out") {
+        }
+
+        // -------------------------
+        // Output
+        // -------------------------
+        else if (token.type === "Keyword" && token.value === "out") {
             next();
-            const expressions: (LiteralNode | IdentifierNode)[] = [];
-            let expectingOperand = true;
+            const expressions: ExpressionNode[] = [];
 
             while (true) {
                 const current = peek();
-                if (!current) throw new Error("out 문에서 예기치 않은 EOF");
+                if (!current) {
+                    throw new Error("out 문에서 예기치 않은 EOF");
+                }
+
                 if (current.type === "Punctuation" && current.value === ";") {
                     next();
                     break;
                 }
+                expressions.push(parseExpression());
 
-                if (expectingOperand) {
-                    if (
-                        ![
-                            "Identifier",
-                            "StringLiteral",
-                            "NumberLiteral",
-                            "BooleanLiteral",
-                        ].includes(current.type)
-                    ) {
-                        throw new Error(
-                            `out 구문에서 피연산자가 유효하지 않습니다: ${current.value}`
-                        );
-                    }
-                    expressions.push(
-                        makeExprNode(current)
-                    );
-                    next();
-                    expectingOperand = false;
-                } else {
-                    throw new Error(`현재는 out에서 연산자 없이 단순 나열만 지원`);
+                if (peek()?.type === "Punctuation" && peek()?.value === ";") {
+                    continue;
                 }
             }
 
@@ -156,45 +267,20 @@ export function parse(tokens: Token[]): ASTNode[] {
                 type: "OutputStatement",
                 expressions,
             });
-        } else if (token.type === "Keyword" && token.value === "if") {
+        }
+
+        // -------------------------
+        // If Statement
+        // -------------------------
+        else if (token.type === "Keyword" && token.value === "if") {
             next();
             expect("ParenOpen");
-
-            const left = next();
-            const operator = next();
-            const right = next();
-
-            if (
-                ![
-                    "Identifier",
-                    "NumberLiteral",
-                    "BooleanLiteral",
-                    "StringLiteral",
-                ].includes(left.type)
-            ) {
-                throw new Error(`조건식의 왼쪽이 잘못됨: ${left.value}`);
-            }
-            if (
-                operator.type !== "Operator" ||
-                !["==", "!=", "<", ">", "<=", ">="].includes(operator.value)
-            ) {
-                throw new Error(`조건문에 잘못된 연산자: ${operator.value}`);
-            }
-            if (
-                ![
-                    "Identifier",
-                    "NumberLiteral",
-                    "BooleanLiteral",
-                    "StringLiteral",
-                ].includes(right.type)
-            ) {
-                throw new Error(`조건식의 오른쪽이 잘못됨: ${right.value}`);
-            }
-
+            const condition = parseExpression();
             expect("ParenClose");
             const consequent = parseBlock();
 
             let alternate: ASTNode[] | undefined = undefined;
+
             if (peek()?.type === "Keyword" && peek()?.value === "else") {
                 next();
                 alternate = parseBlock();
@@ -202,29 +288,35 @@ export function parse(tokens: Token[]): ASTNode[] {
 
             ast.push({
                 type: "IfStatement",
-                test: {
-                    type: "BinaryExpression",
-                    left: makeExprNode(left),
-                    operator: operator.value,
-                    right: makeExprNode(right),
-                },
+                test: condition,
                 consequent,
                 ...(alternate ? { alternate } : {}),
             });
-        } else if (token.type === "Identifier") {
+        }
+
+        // -------------------------
+        // Input Statement
+        // -------------------------
+        else if (token.type === "Identifier") {
             const name = token.value;
+
             next();
             expect("Operator", "=");
             expect("Keyword", "input");
             const prompt = expect("StringLiteral").value;
-            expect("Punctuation", ";");
 
+            expect("Punctuation", ";");
             ast.push({
                 type: "InputStatement",
                 name,
                 prompt,
             });
-        } else {
+        }
+
+        // -------------------------
+        // Unknown
+        // -------------------------
+        else {
             throw new Error(`지원되지 않는 문법 시작: ${token.value}`);
         }
     }

@@ -16,7 +16,8 @@
         "allowImportingTsExtensions": false,
         "outDir": "./dist", 
         "rootDir": "./src", 
-        "noEmit": false 
+        "noEmit": false,
+        "types": ["node"]
     },
     "include": [
         "src"

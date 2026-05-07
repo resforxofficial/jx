@@ -25,7 +25,7 @@ export type OutputStatementNode = {
 
 export type IfStatementNode = {
     type: 'IfStatement';
-    test: BinaryExpressionNode;
+    test: ExpressionNode;
     consequent: ASTNode[];
     alternate?: ASTNode[];
 };

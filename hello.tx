@@ -1,6 +1,6 @@
 mut int a = input "here: ";
 mut int b = input "here: ";
 
-if (a + b > 10) {
+if (a > 10) {
     out "abcd";
 }
