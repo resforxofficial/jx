@@ -57,7 +57,7 @@ export function tokenize(code: string): Token[] {
         }
 
         // 구두점
-        if ([';', ':', '.'].includes(char)) {
+        if ([';', ':', '.', ','].includes(char)) {
             tokens.push({ type: 'Punctuation', value: char, position: i });
             i++;
             continue;
