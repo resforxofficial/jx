@@ -34,4 +34,3 @@ fs.writeFileSync(outputPath, jsCode);
 
 // 6. 실행
 spawnSync('npx', ['tsx', outputPath], { stdio: 'inherit' });
-console.dir(ast, { depth: null });

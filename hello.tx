@@ -1,6 +1,9 @@
-mut int a = input "here: ";
-mut int b = input "here: ";
+mut int hp = 10;
 
-if (a + b > 10) {
-    out a + b * 10, "hello";
+hp = hp - 1;
+
+if (hp <= 0) {
+    out "dead";
 }
+
+out hp;

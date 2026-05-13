@@ -66,79 +66,78 @@ export function validate(
                 }
             } else if (token.type === "Identifier") {
                 const identifier = next();
+
+                // 변수 선언 여부 검사
                 if (!declaredVars.has(identifier.value)) {
                     throw new Error(`변수 "${identifier.value}" 는 선언되지 않았습니다`);
                 }
 
+                // = 검사
                 const eq = next();
+
                 if (eq.type !== "Operator" || eq.value !== "=") {
                     throw new Error(`'=' 연산자가 필요합니다 (${eq.value})`);
                 }
 
-                const inputKeyword = next();
-                if (inputKeyword.type !== "Keyword" || inputKeyword.value !== "input") {
-                    throw new Error(`input 키워드가 필요합니다 (${inputKeyword.value})`);
+                // 세미콜론 전까지 expression 스캔
+                while (i < tokens.length) {
+                    const curr = peek();
+
+                    // assignment 끝
+                    if (curr.type === "Punctuation" && curr.value === ";") {
+                        break;
+                    }
+
+                    // expression 안의 identifier 검사
+                    if (curr.type === "Identifier") {
+                        if (!declaredVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
+                        }
+
+                        if (!initializedVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 초기화되지 않았습니다`);
+                        }
+                    }
+
+                    next();
                 }
 
-                const content = next();
-                if (content.type !== "StringLiteral") {
-                    throw new Error(
-                        `입력 문구는 문자열로 제공되어야 합니다 (${content.value})`,
-                    );
-                }
-
+                // 세미콜론 소비
                 const semi = next();
-                if (semi.value !== ";") {
+
+                if (semi.type !== "Punctuation" || semi.value !== ";") {
                     throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
                 }
 
+                // assignment 이후 initialized 처리
                 initializedVars.add(identifier.value);
             } else if (token.type === "Keyword" && token.value === "out") {
                 next();
 
-                let expectingOperand = true;
                 while (i < tokens.length) {
                     const curr = peek();
-                    if (curr.type === "Punctuation" && curr.value === ";") break;
 
-                    if (expectingOperand) {
-                        if (curr.type === "Identifier") {
-                            if (!declaredVars.has(curr.value)) {
-                                throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
-                            }
-                            if (!initializedVars.has(curr.value)) {
-                                throw new Error(
-                                    `변수 "${curr.value}" 는 초기화되지 않았습니다`,
-                                );
-                            }
-                        }
-
-                        if (
-                            !["Identifier", "StringLiteral", "NumberLiteral"].includes(
-                                curr.type,
-                            )
-                        ) {
-                            throw new Error(
-                                `out 문에서 피연산자가 잘못되었습니다 (${curr.value})`,
-                            );
-                        }
-
-                        next();
-                        expectingOperand = false;
-                    } else {
-                        if (curr.type !== "Operator") {
-                            throw new Error(`out 문에서 연산자가 필요합니다 (${curr.value})`);
-                        }
-                        next();
-                        expectingOperand = true;
+                    // out 끝
+                    if (curr.type === "Punctuation" && curr.value === ";") {
+                        break;
                     }
-                }
 
-                if (expectingOperand) {
-                    throw new Error("out 문 마지막에 피연산자가 필요합니다");
+                    // 변수 검사만 수행
+                    if (curr.type === "Identifier") {
+                        if (!declaredVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
+                        }
+
+                        if (!initializedVars.has(curr.value)) {
+                            throw new Error(`변수 "${curr.value}" 는 초기화되지 않았습니다`);
+                        }
+                    }
+
+                    next();
                 }
 
                 const semi = next();
+
                 if (semi.type !== "Punctuation" || semi.value !== ";") {
                     throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
                 }

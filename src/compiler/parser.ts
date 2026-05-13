@@ -178,13 +178,9 @@ export function parse(tokens: Token[]): ASTNode[] {
             if (maybeTypeOrIdent.type === "Type") {
                 varType = maybeTypeOrIdent.value;
                 identifier = expect("Identifier");
-            }
-            
-            else if (maybeTypeOrIdent.type === "Identifier") {
+            } else if (maybeTypeOrIdent.type === "Identifier") {
                 identifier = maybeTypeOrIdent;
-            }
-            
-            else {
+            } else {
                 throw new Error(`mut 다음에는 타입 또는 식별자가 와야 합니다.`);
             }
 
@@ -215,7 +211,6 @@ export function parse(tokens: Token[]): ASTNode[] {
                         },
                     });
                     continue;
-
                 } else {
                     const value = parseExpression();
                     expect("Punctuation", ";");
@@ -244,23 +239,33 @@ export function parse(tokens: Token[]): ASTNode[] {
         // -------------------------
         else if (token.type === "Keyword" && token.value === "out") {
             next();
+
             const expressions: ExpressionNode[] = [];
 
             while (true) {
+                expressions.push(parseExpression());
+
                 const current = peek();
+
                 if (!current) {
                     throw new Error("out 문에서 예기치 않은 EOF");
                 }
 
+                // out a, b, c;
+                if (current.type === "Punctuation" && current.value === ",") {
+                    next();
+                    continue;
+                }
+
+                // out ... ;
                 if (current.type === "Punctuation" && current.value === ";") {
                     next();
                     break;
                 }
-                expressions.push(parseExpression());
 
-                if (peek()?.type === "Punctuation" && peek()?.value === ";") {
-                    continue;
-                }
+                throw new Error(
+                    `out 문에서 ',' 또는 ';' 가 필요합니다 (${current.value})`,
+                );
             }
 
             ast.push({
@@ -299,17 +304,32 @@ export function parse(tokens: Token[]): ASTNode[] {
         // -------------------------
         else if (token.type === "Identifier") {
             const name = token.value;
-
             next();
+
             expect("Operator", "=");
-            expect("Keyword", "input");
-            const prompt = expect("StringLiteral").value;
+
+            let value: ExpressionNode;
+
+            // input expression
+            if (peek()?.type === "Keyword" && peek()?.value === "input") {
+                next();
+
+                const prompt = expect("StringLiteral").value;
+
+                value = {
+                    type: "InputExpression",
+                    promptText: prompt,
+                };
+            } else {
+                value = parseExpression();
+            }
 
             expect("Punctuation", ";");
+
             ast.push({
-                type: "InputStatement",
-                name,
-                prompt,
+                type: "Assignment",
+                identifier: name,
+                value,
             });
         }
 
