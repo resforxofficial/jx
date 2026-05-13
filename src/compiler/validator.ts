@@ -6,10 +6,10 @@ export function validate(
     declaredVars = new Set<string>(),
     initializedVars = new Set<string>(),
 ): number {
-    console.log("🧩 전체 토큰 목록:");
-    tokens.forEach((t, idx) => {
-        console.log(`${idx}: ${t.type} (${t.value})`);
-    });
+    // console.log("🧩 전체 토큰 목록:");
+    // tokens.forEach((t, idx) => {
+    //     console.log(`${idx}: ${t.type} (${t.value})`);
+    // });
 
     let i = startIndex;
 
@@ -186,6 +186,55 @@ export function validate(
                     throw new Error("if 문 블록이 올바르게 닫히지 않았습니다");
                 }
 
+                validate(innerTokens, 0, declaredVars, initializedVars);
+            } else if (token.type === "Keyword" && token.value === "while") {
+                next(); // while
+
+                const openParen = next();
+
+                if (openParen.type !== "ParenOpen") {
+                    throw new Error(
+                        `while 문 조건은 괄호로 감싸야 합니다 (${openParen.value})`,
+                    );
+                }
+
+                // 조건식 스킵
+                let parenDepth = 1;
+
+                while (i < tokens.length && parenDepth > 0) {
+                    const t = next();
+
+                    if (t.type === "ParenOpen") parenDepth++;
+                    else if (t.type === "ParenClose") parenDepth--;
+                }
+
+                const openBrace = next();
+
+                if (openBrace.type !== "Punctuation" || openBrace.value !== "{") {
+                    throw new Error(
+                        `while 문 뒤에는 { 가 필요합니다 (${openBrace.value})`,
+                    );
+                }
+
+                const innerTokens: Token[] = [];
+                let braceDepth = 1;
+
+                while (i < tokens.length && braceDepth > 0) {
+                    const t = next();
+
+                    if (t.value === "{") braceDepth++;
+                    else if (t.value === "}") braceDepth--;
+
+                    if (braceDepth > 0) {
+                        innerTokens.push(t);
+                    }
+                }
+
+                if (braceDepth !== 0) {
+                    throw new Error("while 문 블록이 올바르게 닫히지 않았습니다");
+                }
+
+                // 기존 변수 상태 유지
                 validate(innerTokens, 0, declaredVars, initializedVars);
             } else {
                 throw new Error(`알 수 없는 문장: ${token.value}`);

@@ -99,6 +99,15 @@ export function transform(ast: ASTNode[]): string {
                 return `let ${name} = prompt(${JSON.stringify(prompt)});`;
             }
 
+            case 'WhileStatement': {
+                const { test, body } = node;
+                const bodyCode = body
+                    .map(transformNode)
+                    .join('\n');
+
+                return `while (${formatExpression(test)}) {\n${bodyCode}\n}`;
+            }
+
             default:
                 const _exhaustiveCheck: never = node;
                 throw new Error(`Unhandled node type: ${(node as any).type}`);

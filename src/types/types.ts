@@ -3,35 +3,42 @@ export type ASTNode =
     | OutputStatementNode
     | IfStatementNode
     | InputStatementNode
+    | WhileStatementNode
     | AssignmentNode;
 
 export type VariableDeclarationNode = {
-    type: 'VariableDeclaration';
+    type: "VariableDeclaration";
     name: string;
     varType?: string;
     value?: ExpressionNode;
 };
 
+export type WhileStatementNode = {
+    type: "WhileStatement";
+    test: ExpressionNode;
+    body: ASTNode[];
+};
+
 export type AssignmentNode = {
-    type: 'Assignment';
+    type: "Assignment";
     identifier: string;
     value: ExpressionNode;
 };
 
 export type OutputStatementNode = {
-    type: 'OutputStatement';
+    type: "OutputStatement";
     expressions: ExpressionNode[];
 };
 
 export type IfStatementNode = {
-    type: 'IfStatement';
+    type: "IfStatement";
     test: ExpressionNode;
     consequent: ASTNode[];
     alternate?: ASTNode[];
 };
 
 export type InputStatementNode = {
-    type: 'InputStatement';
+    type: "InputStatement";
     name: string;
     prompt: string;
 };
@@ -44,22 +51,22 @@ export type ExpressionNode =
     | BinaryExpressionNode;
 
 export type LiteralNode = {
-    type: 'Literal';
+    type: "Literal";
     value: string | number | boolean;
 };
 
 export type IdentifierNode = {
-    type: 'Identifier';
+    type: "Identifier";
     name: string;
 };
 
 export type InputExpressionNode = {
-    type: 'InputExpression';
+    type: "InputExpression";
     promptText: string;
 };
 
 export type BinaryExpressionNode = {
-    type: 'BinaryExpression';
+    type: "BinaryExpression";
     left: ExpressionNode;
     operator: string;
     right: ExpressionNode;

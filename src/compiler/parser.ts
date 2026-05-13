@@ -297,6 +297,22 @@ export function parse(tokens: Token[]): ASTNode[] {
                 consequent,
                 ...(alternate ? { alternate } : {}),
             });
+        } else if (token.type === "Keyword" && token.value === "while") {
+            next();
+
+            expect("ParenOpen");
+
+            const condition = parseExpression();
+
+            expect("ParenClose");
+
+            const body = parseBlock();
+
+            ast.push({
+                type: "WhileStatement",
+                test: condition,
+                body,
+            });
         }
 
         // -------------------------
