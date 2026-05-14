@@ -1,3 +1,4 @@
 mut int a = 10;
 
 out a + unknownVar * 3;
+out + + + + ;

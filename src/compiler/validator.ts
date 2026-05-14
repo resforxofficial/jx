@@ -16,232 +16,241 @@ export function validate(
     const next = () => tokens[i++];
     const peek = () => tokens[i];
 
+    function validateIdentifierUsage(name: string) {
+        if (!declaredVars.has(name)) {
+            throw new Error(`변수 "${name}" 는 선언되지 않았습니다`);
+        }
+
+        if (!initializedVars.has(name)) {
+            throw new Error(`변수 "${name}" 는 초기화되지 않았습니다`);
+        }
+    }
+
+    function expectSemicolon() {
+        const semi = next();
+
+        if (semi.type !== "Punctuation" || semi.value !== ";") {
+            throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
+        }
+    }
+
+    function consumeExpressionUntilSemicolon() {
+        while (i < tokens.length) {
+            const curr = peek();
+
+            // expression 끝
+            if (curr.type === "Punctuation" && curr.value === ";") {
+                break;
+            }
+
+            // identifier validation
+            if (curr.type === "Identifier") {
+                validateIdentifierUsage(curr.value);
+            }
+
+            next();
+        }
+    }
+
+    function consumeCondition(statementType: string) {
+        const openParen = next();
+
+        if (openParen.type !== "ParenOpen") {
+            throw new Error(
+                `${statementType} 문 조건은 괄호로 감싸야 합니다 (${openParen.value})`,
+            );
+        }
+
+        let parenDepth = 1;
+
+        while (i < tokens.length && parenDepth > 0) {
+            const t = next();
+
+            if (t.type === "ParenOpen") {
+                parenDepth++;
+            } else if (t.type === "ParenClose") {
+                parenDepth--;
+            }
+
+            // 조건 안 identifier 검사
+            if (t.type === "Identifier") {
+                validateIdentifierUsage(t.value);
+            }
+        }
+
+        if (parenDepth !== 0) {
+            throw new Error(
+                `${statementType} 문 조건 괄호가 올바르게 닫히지 않았습니다`,
+            );
+        }
+    }
+
+    function collectBlockTokens(): Token[] {
+        const openBrace = next();
+
+        if (openBrace.type !== "Punctuation" || openBrace.value !== "{") {
+            throw new Error(`블록 시작에는 { 가 필요합니다 (${openBrace.value})`);
+        }
+
+        const innerTokens: Token[] = [];
+
+        let braceDepth = 1;
+
+        while (i < tokens.length && braceDepth > 0) {
+            const t = next();
+
+            if (t.value === "{") {
+                braceDepth++;
+            } else if (t.value === "}") {
+                braceDepth--;
+            }
+
+            if (braceDepth > 0) {
+                innerTokens.push(t);
+            }
+        }
+
+        if (braceDepth !== 0) {
+            throw new Error("블록이 올바르게 닫히지 않았습니다");
+        }
+
+        return innerTokens;
+    }
+
     const parseBlock = () => {
         while (i < tokens.length) {
             const token = peek();
 
+            // =========================
+            // mut
+            // =========================
             if (token.type === "Keyword" && token.value === "mut") {
                 next();
+
                 const maybeType = peek();
-                if (maybeType.type === "Type") next();
+
+                if (maybeType.type === "Type") {
+                    next();
+                }
 
                 const identifier = next();
+
+                if (identifier.type !== "Identifier") {
+                    throw new Error(
+                        `mut 뒤에는 변수명이 와야 합니다 (${identifier.value})`,
+                    );
+                }
+
                 declaredVars.add(identifier.value);
 
                 const maybeEq = peek();
-                if (maybeEq?.type === "Operator" && maybeEq.value === "=") {
-                    next();
-                    const maybeInput = peek();
-                    if (maybeInput?.type === "Keyword" && maybeInput.value === "input") {
-                        next();
-                        const content = next();
-                        if (content.type !== "StringLiteral") {
-                            throw new Error(
-                                `입력 문구는 문자열로 제공되어야 합니다 (${content.value})`,
-                            );
-                        }
-                        const semi = next();
-                        if (semi.type !== "Punctuation" || semi.value !== ";") {
-                            throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
-                        }
-                        initializedVars.add(identifier.value);
-                        continue;
-                    }
 
-                    const value = next();
-                    if (
-                        !["StringLiteral", "NumberLiteral", "BooleanLiteral"].includes(
-                            value.type,
-                        )
-                    ) {
-                        throw new Error(`잘못된 초기화 값입니다 (${value.value})`);
+                // 초기화 없는 선언
+                if (maybeEq.type === "Punctuation" && maybeEq.value === ";") {
+                    expectSemicolon();
+                    continue;
+                }
+
+                // =
+                if (maybeEq.type !== "Operator" || maybeEq.value !== "=") {
+                    throw new Error(`변수 선언에 '=' 가 필요합니다`);
+                }
+
+                next();
+
+                // input
+                if (peek()?.type === "Keyword" && peek()?.value === "input") {
+                    next();
+
+                    const content = next();
+
+                    if (content.type !== "StringLiteral") {
+                        throw new Error(
+                            `입력 문구는 문자열이어야 합니다 (${content.value})`,
+                        );
                     }
 
                     initializedVars.add(identifier.value);
+
+                    expectSemicolon();
+                    continue;
                 }
 
-                const semi = next();
-                if (semi.type !== "Punctuation" || semi.value !== ";") {
-                    throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
-                }
-            } else if (token.type === "Identifier") {
+                // 일반 expression
+                consumeExpressionUntilSemicolon();
+
+                initializedVars.add(identifier.value);
+
+                expectSemicolon();
+            }
+
+            // =========================
+            // assignment
+            // =========================
+            else if (token.type === "Identifier") {
                 const identifier = next();
 
-                // 변수 선언 여부 검사
-                if (!declaredVars.has(identifier.value)) {
-                    throw new Error(`변수 "${identifier.value}" 는 선언되지 않았습니다`);
-                }
+                validateIdentifierUsage(identifier.value);
 
-                // = 검사
                 const eq = next();
 
                 if (eq.type !== "Operator" || eq.value !== "=") {
                     throw new Error(`'=' 연산자가 필요합니다 (${eq.value})`);
                 }
 
-                // 세미콜론 전까지 expression 스캔
-                while (i < tokens.length) {
-                    const curr = peek();
+                consumeExpressionUntilSemicolon();
 
-                    // assignment 끝
-                    if (curr.type === "Punctuation" && curr.value === ";") {
-                        break;
-                    }
+                expectSemicolon();
 
-                    // expression 안의 identifier 검사
-                    if (curr.type === "Identifier") {
-                        if (!declaredVars.has(curr.value)) {
-                            throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
-                        }
-
-                        if (!initializedVars.has(curr.value)) {
-                            throw new Error(`변수 "${curr.value}" 는 초기화되지 않았습니다`);
-                        }
-                    }
-
-                    next();
-                }
-
-                // 세미콜론 소비
-                const semi = next();
-
-                if (semi.type !== "Punctuation" || semi.value !== ";") {
-                    throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
-                }
-
-                // assignment 이후 initialized 처리
                 initializedVars.add(identifier.value);
-            } else if (token.type === "Keyword" && token.value === "out") {
+            }
+
+            // =========================
+            // out
+            // =========================
+            else if (token.type === "Keyword" && token.value === "out") {
                 next();
 
-                while (i < tokens.length) {
-                    const curr = peek();
+                consumeExpressionUntilSemicolon();
 
-                    // out 끝
-                    if (curr.type === "Punctuation" && curr.value === ";") {
-                        break;
-                    }
+                expectSemicolon();
+            }
 
-                    // 변수 검사만 수행
-                    if (curr.type === "Identifier") {
-                        if (!declaredVars.has(curr.value)) {
-                            throw new Error(`변수 "${curr.value}" 는 선언되지 않았습니다`);
-                        }
+            // =========================
+            // if
+            // =========================
+            else if (token.type === "Keyword" && token.value === "if") {
+                next();
 
-                        if (!initializedVars.has(curr.value)) {
-                            throw new Error(`변수 "${curr.value}" 는 초기화되지 않았습니다`);
-                        }
-                    }
+                consumeCondition("if");
 
-                    next();
-                }
-
-                const semi = next();
-
-                if (semi.type !== "Punctuation" || semi.value !== ";") {
-                    throw new Error(`세미콜론(;)이 필요합니다 (${semi.value})`);
-                }
-            } else if (token.type === "Keyword" && token.value === "if") {
-                next(); // if
-
-                const openParen = next();
-
-                if (openParen.type !== "ParenOpen") {
-                    throw new Error(
-                        `if 문 조건은 괄호로 감싸야 합니다 (${openParen.value})`,
-                    );
-                }
-
-                // 괄호 끝까지 그냥 스킵
-                let parenDepth = 1;
-
-                while (i < tokens.length && parenDepth > 0) {
-                    const t = next();
-
-                    if (t.type === "ParenOpen") parenDepth++;
-                    else if (t.type === "ParenClose") parenDepth--;
-                }
-
-                const openBrace = next();
-
-                if (openBrace.type !== "Punctuation" || openBrace.value !== "{") {
-                    throw new Error(`if 문 뒤에는 { 가 필요합니다 (${openBrace.value})`);
-                }
-
-                const innerTokens: Token[] = [];
-                let braceDepth = 1;
-
-                while (i < tokens.length && braceDepth > 0) {
-                    const t = next();
-
-                    if (t.value === "{") braceDepth++;
-                    else if (t.value === "}") braceDepth--;
-
-                    if (braceDepth > 0) {
-                        innerTokens.push(t);
-                    }
-                }
-
-                if (braceDepth !== 0) {
-                    throw new Error("if 문 블록이 올바르게 닫히지 않았습니다");
-                }
+                const innerTokens = collectBlockTokens();
 
                 validate(innerTokens, 0, declaredVars, initializedVars);
-            } else if (token.type === "Keyword" && token.value === "while") {
-                next(); // while
+            }
 
-                const openParen = next();
+            // =========================
+            // while
+            // =========================
+            else if (token.type === "Keyword" && token.value === "while") {
+                next();
 
-                if (openParen.type !== "ParenOpen") {
-                    throw new Error(
-                        `while 문 조건은 괄호로 감싸야 합니다 (${openParen.value})`,
-                    );
-                }
+                consumeCondition("while");
 
-                // 조건식 스킵
-                let parenDepth = 1;
+                const innerTokens = collectBlockTokens();
 
-                while (i < tokens.length && parenDepth > 0) {
-                    const t = next();
-
-                    if (t.type === "ParenOpen") parenDepth++;
-                    else if (t.type === "ParenClose") parenDepth--;
-                }
-
-                const openBrace = next();
-
-                if (openBrace.type !== "Punctuation" || openBrace.value !== "{") {
-                    throw new Error(
-                        `while 문 뒤에는 { 가 필요합니다 (${openBrace.value})`,
-                    );
-                }
-
-                const innerTokens: Token[] = [];
-                let braceDepth = 1;
-
-                while (i < tokens.length && braceDepth > 0) {
-                    const t = next();
-
-                    if (t.value === "{") braceDepth++;
-                    else if (t.value === "}") braceDepth--;
-
-                    if (braceDepth > 0) {
-                        innerTokens.push(t);
-                    }
-                }
-
-                if (braceDepth !== 0) {
-                    throw new Error("while 문 블록이 올바르게 닫히지 않았습니다");
-                }
-
-                // 기존 변수 상태 유지
                 validate(innerTokens, 0, declaredVars, initializedVars);
-            } else {
+            }
+
+            // =========================
+            // unknown
+            // =========================
+            else {
                 throw new Error(`알 수 없는 문장: ${token.value}`);
             }
         }
 
-        return i; // <- 이게 핵심!
+        return i;
     };
 
     return parseBlock();
