@@ -18,12 +18,12 @@ const raw = fs.readFileSync(inputPath, 'utf-8');
 
 // 1. 토크나이징
 const tokens = tokenize(raw);
+const ast = parse(tokens);
 
 // 2. 문법 검사
-validate(tokens);
+validate(ast);
 
 // 3. 파싱 → AST 생성
-const ast = parse(tokens);
 
 // 4. JS 코드로 변환
 const jsCode = transform(ast);

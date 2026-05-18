@@ -71,3 +71,10 @@ export type BinaryExpressionNode = {
     operator: string;
     right: ExpressionNode;
 };
+
+export type Scope = {
+    parent?: Scope;
+
+    declared: Set<string>;
+    initialized: Set<string>;
+};
