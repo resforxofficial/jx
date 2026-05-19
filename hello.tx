@@ -1,2 +1,9 @@
-mut int hp;
-hp = hp + 1;
+mut int hp = 10;
+out hp;
+
+if (true) {
+    hp = 999;
+    out hp;
+}
+
+out hp;
