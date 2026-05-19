@@ -1,9 +1,7 @@
-immut int hp = 10;
+mut int hp = 10;
 
+hp = 20;
 out hp;
 
-out hp + 10;
-
-out hp + hp;
-
-out hp, hp + 1, hp + hp, hp * hp;
+hp = "wow";
+out hp;

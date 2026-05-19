@@ -120,6 +120,11 @@ export function validate(
             // 먼저 expression 검사
             if (node.value) {
                 validateExpression(node.value);
+                const exprType = getExpressionType(node.value, scope);
+
+                if (node.varType && exprType !== "any" && exprType !== node.varType) {
+                    throw new Error(`타입 불일치: "${node.name}" 는 ${node.varType} 타입입니다`);
+                }
             }
 
             // 검사 끝난 뒤 선언 처리
@@ -142,6 +147,11 @@ export function validate(
             }
 
             validateExpression(node.value);
+            // here
+            const exprType = getExpressionType(node.value, scope);
+            if (variable && exprType !== "any" && variable.type !== exprType) {
+                throw new Error(`타입 불일치: "${node.identifier}" 는 ${variable.type} 타입입니다`);
+            }
 
             scope.initialized.add(node.identifier);
 
