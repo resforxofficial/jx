@@ -31,7 +31,7 @@ export function transform(ast: ASTNode[]): string {
     function transformNode(node: ASTNode): string {
         switch (node.type) {
             case 'VariableDeclaration': {
-                const { name, value, varType } = node as VariableDeclarationNode;
+                const { name, value, varType, mutable } = node as VariableDeclarationNode;
 
                 let initializer = 'undefined';
                 let tsType = 'any';
@@ -57,12 +57,14 @@ export function transform(ast: ASTNode[]): string {
                         tsType = mapTypeToTs(varType ?? detectLiteralType(value));
                         initializer = formatExpression(value);
                     }
+                    const keyword1 = mutable ? "let" : "const";
 
-                    return `let ${name}: ${tsType} = ${initializer};`;
+                    return `${keyword1} ${name}: ${tsType} = ${initializer};`;
                 }
+                const keyword2 = mutable ? "let" : "const";
 
                 tsType = mapTypeToTs(varType ?? 'any');
-                return `let ${name}: ${tsType};`;
+                return `${keyword2} ${name}: ${tsType};`;
             }
 
             case 'Assignment': {

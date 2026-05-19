@@ -1,9 +1,9 @@
-mut int hp = 10;
-out hp;
-
-if (true) {
-    hp = 999;
-    out hp;
-}
+immut int hp = 10;
 
 out hp;
+
+out hp + 10;
+
+out hp + hp;
+
+out hp, hp + 1, hp + hp, hp * hp;
