@@ -17,7 +17,7 @@ export interface Token {
     position: number;
 }
 
-const KEYWORDS = new Set(["mut", "out", "input", "if", "else", "while"]);
+const KEYWORDS = new Set(["mut", "out", "input", "if", "else", "while", "immut"]);
 
 const TYPES = new Set(["str", "int", "bool"]);
 

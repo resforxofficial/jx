@@ -6,6 +6,8 @@ import type {
     ExpressionNode,
 } from "../types/types.ts";
 
+const MutType = ["mut", "immut"];
+
 export function parse(tokens: Token[]): ASTNode[] {
     let i = 0;
     const ast: ASTNode[] = [];
@@ -169,7 +171,7 @@ export function parse(tokens: Token[]): ASTNode[] {
         // Variable Declaration
         // -------------------------
 
-        if (token.type === "Keyword" && token.value === "mut") {
+        if (token.type === "Keyword" && (token.value == MutType[0] || token.value == MutType[1])) {
             next();
             const maybeTypeOrIdent = next();
             let identifier;
@@ -209,6 +211,7 @@ export function parse(tokens: Token[]): ASTNode[] {
                             type: "InputExpression",
                             promptText: prompt,
                         },
+                        mutable: token.value === "mut",
                     });
                     continue;
                 } else {
@@ -220,6 +223,7 @@ export function parse(tokens: Token[]): ASTNode[] {
                         name: identifier.value,
                         varType,
                         value,
+                        mutable: token.value === "mut",
                     });
 
                     continue;
@@ -231,6 +235,7 @@ export function parse(tokens: Token[]): ASTNode[] {
                 type: "VariableDeclaration",
                 name: identifier.value,
                 varType,
+                mutable: token.value === "mut",
             });
         }
 

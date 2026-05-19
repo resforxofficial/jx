@@ -11,6 +11,7 @@ export type VariableDeclarationNode = {
     name: string;
     varType?: string;
     value?: ExpressionNode;
+    mutable: boolean,
 };
 
 export type WhileStatementNode = {
@@ -75,6 +76,6 @@ export type BinaryExpressionNode = {
 export type Scope = {
     parent?: Scope;
 
-    declared: Set<string>;
+    declared: Map<string, { mutable: boolean }>;
     initialized: Set<string>;
 };

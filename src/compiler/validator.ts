@@ -12,7 +12,7 @@ import type {
 export function validate(
     ast: ASTNode[],
     scope: Scope = {
-        declared: new Set(),
+        declared: new Map(),
         initialized: new Set(),
     },
 ) {
@@ -67,6 +67,18 @@ export function validate(
         return false;
     }
 
+    function getVariable(name: string, scope: Scope) {
+        if (scope.declared.has(name)) {
+            return scope.declared.get(name);
+        }
+
+        if (scope.parent) {
+            return getVariable(name, scope.parent);
+        }
+
+        return null;
+    }
+
     for (const node of ast) {
         if (node.type === "VariableDeclaration") {
             if (scope.declared.has(node.name)) {
@@ -79,7 +91,7 @@ export function validate(
             }
 
             // 검사 끝난 뒤 선언 처리
-            scope.declared.add(node.name);
+            scope.declared.set(node.name, { mutable: node.mutable });
 
             if (node.value) {
                 scope.initialized.add(node.name);
@@ -89,6 +101,10 @@ export function validate(
         }
         if (node.type === "Assignment") {
             validateIdentifierUsage(node.identifier);
+            const variable = getVariable(node.identifier, scope);
+            if (!variable?.mutable) {
+                throw new Error(`상수 "${node.identifier}" 는 수정할 수 없습니다`);
+            }
 
             validateExpression(node.value);
 
@@ -108,7 +124,7 @@ export function validate(
 
             const childScope: Scope = {
                 parent: scope,
-                declared: new Set(),
+                declared: new Map(),
                 initialized: new Set(),
             };
 
@@ -117,7 +133,7 @@ export function validate(
             if (node.alternate) {
                 const alternateScope: Scope = {
                     parent: scope,
-                    declared: new Set(),
+                    declared: new Map(),
                     initialized: new Set(),
                 };
 
@@ -131,7 +147,7 @@ export function validate(
 
             const childScope: Scope = {
                 parent: scope,
-                declared: new Set(),
+                declared: new Map(),
                 initialized: new Set(),
             };
 
