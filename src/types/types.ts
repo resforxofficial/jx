@@ -76,6 +76,6 @@ export type BinaryExpressionNode = {
 export type Scope = {
     parent?: Scope;
 
-    declared: Map<string, { mutable: boolean }>;
+    declared: Map<string, { mutable: boolean, type: string }>;
     initialized: Set<string>;
 };

@@ -79,6 +79,38 @@ export function validate(
         return null;
     }
 
+    function getExpressionType(expr: ExpressionNode, scope: Scope): string {
+        if (expr.type === "Literal") {
+            if (typeof expr.value === "number") {
+                return "int";
+            }
+
+            if (typeof expr.value === "string") {
+                return "str";
+            }
+
+            if (typeof expr.value === "boolean") {
+                return "bool";
+            }
+        }
+
+        if (expr.type === "Identifier") {
+            const variable = getVariable(expr.name, scope);
+
+            return variable?.type ?? "any";
+        }
+
+        if (expr.type === "InputExpression") {
+            return "str";
+        }
+
+        if (expr.type === "BinaryExpression") {
+            return getExpressionType(expr.left, scope);
+        }
+
+        return "any";
+    }
+
     for (const node of ast) {
         if (node.type === "VariableDeclaration") {
             if (scope.declared.has(node.name)) {
@@ -91,7 +123,10 @@ export function validate(
             }
 
             // 검사 끝난 뒤 선언 처리
-            scope.declared.set(node.name, { mutable: node.mutable });
+            scope.declared.set(node.name, {
+                mutable: node.mutable,
+                type: node.varType ?? "any",
+            });
 
             if (node.value) {
                 scope.initialized.add(node.name);
