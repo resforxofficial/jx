@@ -9,8 +9,8 @@ import type {
     BinaryExpressionNode,
     LiteralNode,
     IdentifierNode,
-    InputExpressionNode
-} from '../types/types.ts';
+    InputExpressionNode,
+} from "../types/types.ts";
 
 export function transform(ast: ASTNode[]): string {
     const output: string[] = [];
@@ -21,35 +21,38 @@ export function transform(ast: ASTNode[]): string {
     }
 
     if (usedPrompt) {
-        output.unshift("import promptSync from 'prompt-sync';\nconst prompt = promptSync();");
+        output.unshift(
+            "import promptSync from 'prompt-sync';\nconst prompt = promptSync();",
+        );
     }
 
-    return output.join('\n');
+    return output.join("\n");
 
     // ---- 내부 헬퍼 ----
 
     function transformNode(node: ASTNode): string {
         switch (node.type) {
-            case 'VariableDeclaration': {
-                const { name, value, varType, mutable } = node as VariableDeclarationNode;
+            case "VariableDeclaration": {
+                const { name, value, varType, mutable } =
+                    node as VariableDeclarationNode;
 
-                let initializer = 'undefined';
-                let tsType = 'any';
+                let initializer = "undefined";
+                let tsType = "any";
 
                 if (value) {
-                    if (value.type === 'InputExpression') {
+                    if (value.type === "InputExpression") {
                         usedPrompt = true;
                         const base = `prompt(${JSON.stringify(value.promptText)})`;
 
-                        if (varType === 'str') {
+                        if (varType === "str") {
                             initializer = base;
-                            tsType = 'string';
-                        } else if (varType === 'int') {
+                            tsType = "string";
+                        } else if (varType === "int") {
                             initializer = `Number(${base})`;
-                            tsType = 'number';
-                        } else if (varType === 'bool') {
+                            tsType = "number";
+                        } else if (varType === "bool") {
                             initializer = `(${base} === "true")`;
-                            tsType = 'boolean';
+                            tsType = "boolean";
                         } else {
                             initializer = base;
                         }
@@ -63,14 +66,14 @@ export function transform(ast: ASTNode[]): string {
                 }
                 const keyword2 = mutable ? "let" : "const";
 
-                tsType = mapTypeToTs(varType ?? 'any');
+                tsType = mapTypeToTs(varType ?? "any");
                 return `${keyword2} ${name}: ${tsType};`;
             }
 
-            case 'Assignment': {
+            case "Assignment": {
                 const { identifier, value } = node as AssignmentNode;
 
-                if (value.type === 'InputExpression') {
+                if (value.type === "InputExpression") {
                     usedPrompt = true;
                     const base = `prompt(${JSON.stringify(value.promptText)})`;
                     return `${identifier} = Number(${base});`;
@@ -79,33 +82,35 @@ export function transform(ast: ASTNode[]): string {
                 return `${identifier} = ${formatExpression(value)};`;
             }
 
-            case 'OutputStatement': {
+            case "OutputStatement": {
                 const { expressions } = node as OutputStatementNode;
-                const parts = expressions.map(expr => formatExpression(expr)).join(', ');
+                const parts = expressions
+                    .map((expr) => formatExpression(expr))
+                    .join(", ");
                 return `console.log(${parts});`;
             }
 
-            case 'IfStatement': {
+            case "IfStatement": {
                 const { test, consequent, alternate } = node as IfStatementNode;
 
                 const conditionStr = formatExpression(test);
-                const thenBlock = consequent.map(transformNode).join('\n');
-                const elseBlock = alternate ? `else {\n${alternate.map(transformNode).join('\n')}\n}` : '';
+                const thenBlock = consequent.map(transformNode).join("\n");
+                const elseBlock = alternate
+                    ? `else {\n${alternate.map(transformNode).join("\n")}\n}`
+                    : "";
 
                 return `if (${conditionStr}) {\n${thenBlock}\n}${elseBlock}`;
             }
 
-            case 'InputStatement': {
+            case "InputStatement": {
                 const { name, prompt } = node as InputStatementNode;
                 usedPrompt = true;
                 return `let ${name} = prompt(${JSON.stringify(prompt)});`;
             }
 
-            case 'WhileStatement': {
+            case "WhileStatement": {
                 const { test, body } = node;
-                const bodyCode = body
-                    .map(transformNode)
-                    .join('\n');
+                const bodyCode = body.map(transformNode).join("\n");
 
                 return `while (${formatExpression(test)}) {\n${bodyCode}\n}`;
             }
@@ -120,32 +125,38 @@ export function transform(ast: ASTNode[]): string {
 // ---- 유틸 함수 ----
 
 function mapTypeToTs(type: string): string {
-    if (type === 'str') return 'string';
-    if (type === 'int') return 'number';
-    if (type === 'bool') return 'boolean';
-    return 'any';
+    if (type === "str") return "string";
+    if (type === "int") return "number";
+    if (type === "bool") return "boolean";
+    return "any";
 }
 
 function detectLiteralType(expr: ExpressionNode): string {
-    if (expr.type === 'Literal') {
-        if (typeof expr.value === 'string') return 'str';
-        if (typeof expr.value === 'number') return 'int';
-        if (typeof expr.value === 'boolean') return 'bool';
+    if (expr.type === "Literal") {
+        if (typeof expr.value === "string") return "str";
+        if (typeof expr.value === "number") return "int";
+        if (typeof expr.value === "boolean") return "bool";
     }
-    return 'any';
+    return "any";
 }
 
 function formatExpression(expr: ExpressionNode): string {
     switch (expr.type) {
-        case 'Literal':
-            return typeof expr.value === 'string' ? JSON.stringify(expr.value) : String(expr.value);
-        case 'Identifier':
+        case "Literal":
+            return typeof expr.value === "string"
+                ? JSON.stringify(expr.value)
+                : String(expr.value);
+        case "Identifier":
             return expr.name;
-        case 'InputExpression':
+        case "InputExpression":
             return `prompt(${JSON.stringify(expr.promptText)})`;
-        case 'BinaryExpression':
+        case "BinaryExpression":
             return `(${formatExpression(expr.left)} ${expr.operator} ${formatExpression(expr.right)})`;
+        case "UnaryExpression":
+            return `(${expr.operator}${formatExpression(expr.operand)})`;
         default:
-            throw new Error(`formatExpression 에러: 알 수 없는 표현식 타입 (${(expr as any).type})`);
+            throw new Error(
+                `formatExpression 에러: 알 수 없는 표현식 타입 (${(expr as any).type})`,
+            );
     }
 }

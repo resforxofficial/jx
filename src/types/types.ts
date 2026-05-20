@@ -11,7 +11,7 @@ export type VariableDeclarationNode = {
     name: string;
     varType?: string;
     value?: ExpressionNode;
-    mutable: boolean,
+    mutable: boolean;
 };
 
 export type WhileStatementNode = {
@@ -49,6 +49,7 @@ export type ExpressionNode =
     | LiteralNode
     | IdentifierNode
     | InputExpressionNode
+    | UnaryExpressionNode
     | BinaryExpressionNode;
 
 export type LiteralNode = {
@@ -76,6 +77,12 @@ export type BinaryExpressionNode = {
 export type Scope = {
     parent?: Scope;
 
-    declared: Map<string, { mutable: boolean, type: string }>;
+    declared: Map<string, { mutable: boolean; type: string }>;
     initialized: Set<string>;
+};
+
+export type UnaryExpressionNode = {
+    type: "UnaryExpression";
+    operator: string;
+    operand: ExpressionNode;
 };

@@ -76,11 +76,11 @@ export function parse(tokens: Token[]): ASTNode[] {
     }
 
     function parseFactor(): ExpressionNode {
-        let left = parsePrimary();
+        let left = parseUnary();
 
         while (peek()?.type === "Operator" && ["*", "/"].includes(peek()!.value)) {
             const operator = next().value;
-            const right = parsePrimary();
+            const right = parseUnary();
 
             left = {
                 type: "BinaryExpression",
@@ -137,6 +137,27 @@ export function parse(tokens: Token[]): ASTNode[] {
         throw new Error(`잘못된 표현식: ${token.value}`);
     }
 
+    function parseUnary(): ExpressionNode {
+        const token = peek();
+
+        if (
+            token?.type === "Operator" &&
+            (token.value === "-" || token.value === "!")
+        ) {
+            next();
+
+            const operand = parseUnary();
+
+            return {
+                type: "UnaryExpression",
+                operator: token.value,
+                operand,
+            };
+        }
+
+        return parsePrimary();
+    }
+
     // -----------------------------------
     // Block Parser
     // -----------------------------------
@@ -171,7 +192,10 @@ export function parse(tokens: Token[]): ASTNode[] {
         // Variable Declaration
         // -------------------------
 
-        if (token.type === "Keyword" && (token.value == MutType[0] || token.value == MutType[1])) {
+        if (
+            token.type === "Keyword" &&
+            (token.value == MutType[0] || token.value == MutType[1])
+        ) {
             next();
             const maybeTypeOrIdent = next();
             let identifier;

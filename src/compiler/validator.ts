@@ -32,6 +32,11 @@ export function validate(
             return;
         }
 
+        if (node.type === "UnaryExpression") {
+            validateExpression(node.operand);
+            return;
+        }
+
         if (node.type === "BinaryExpression") {
             validateExpression(node.left);
             validateExpression(node.right);
@@ -113,8 +118,12 @@ export function validate(
 
     for (const node of ast) {
         if (node.type === "VariableDeclaration") {
-            if (scope.declared.has(node.name)) {
+            if (isDeclared(node.name, scope)) {
                 throw new Error(`변수 "${node.name}" 는 이미 선언되었습니다`);
+            }
+
+            if (!node.mutable && !node.value) {
+                throw new Error(`상수 "${node.name}" 는 반드시 초기화되어야 합니다`);
             }
 
             // 먼저 expression 검사
@@ -123,7 +132,9 @@ export function validate(
                 const exprType = getExpressionType(node.value, scope);
 
                 if (node.varType && exprType !== "any" && exprType !== node.varType) {
-                    throw new Error(`타입 불일치: "${node.name}" 는 ${node.varType} 타입입니다`);
+                    throw new Error(
+                        `타입 불일치: "${node.name}" 는 ${node.varType} 타입입니다`,
+                    );
                 }
             }
 
@@ -150,7 +161,9 @@ export function validate(
             // here
             const exprType = getExpressionType(node.value, scope);
             if (variable && exprType !== "any" && variable.type !== exprType) {
-                throw new Error(`타입 불일치: "${node.identifier}" 는 ${variable.type} 타입입니다`);
+                throw new Error(
+                    `타입 불일치: "${node.identifier}" 는 ${variable.type} 타입입니다`,
+                );
             }
 
             scope.initialized.add(node.identifier);

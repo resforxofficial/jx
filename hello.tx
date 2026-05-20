@@ -1,7 +1,0 @@
-mut int hp = 10;
-
-hp = 20;
-out hp;
-
-hp = "wow";
-out hp;
