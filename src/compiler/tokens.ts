@@ -143,7 +143,7 @@ export function tokenize(code: string): Token[] {
         }
 
         // 연산자
-        if ("=+-*/".includes(char)) {
+        if ("=+-*/!".includes(char)) {
             tokens.push({ type: "Operator", value: char, position: i });
             i++;
             continue;

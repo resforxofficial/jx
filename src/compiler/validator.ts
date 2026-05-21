@@ -99,6 +99,22 @@ export function validate(
             }
         }
 
+        if (expr.type === "UnaryExpression") {
+            if (expr.operator === "!") {
+                const operandType = getExpressionType(expr.operand, scope);
+
+                if (operandType !== "bool") {
+                    throw new Error(`! 연산자는 bool 타입만 사용할 수 있습니다`);
+                }
+
+                return "bool";
+            }
+
+            if (expr.operator === "-") {
+                return getExpressionType(expr.operand, scope);
+            }
+        }
+
         if (expr.type === "Identifier") {
             const variable = getVariable(expr.name, scope);
 
@@ -110,7 +126,27 @@ export function validate(
         }
 
         if (expr.type === "BinaryExpression") {
-            return getExpressionType(expr.left, scope);
+            const leftType = getExpressionType(expr.left, scope);
+
+            const rightType = getExpressionType(expr.right, scope);
+
+            // 산술 연산
+            if (["+", "-", "*", "/"].includes(expr.operator)) {
+                if (leftType !== "int" || rightType !== "int") {
+                    throw new Error(`산술 연산은 int 타입만 가능합니다`);
+                }
+
+                return "int";
+            }
+
+            // 비교 연산
+            if (["==", "!=", ">", "<", ">=", "<="].includes(expr.operator)) {
+                if (leftType !== rightType) {
+                    throw new Error(`비교 연산 타입이 서로 다릅니다`);
+                }
+
+                return "bool";
+            }
         }
 
         return "any";
@@ -130,6 +166,16 @@ export function validate(
             if (node.value) {
                 validateExpression(node.value);
                 const exprType = getExpressionType(node.value, scope);
+
+                if (node.value?.type === "InputExpression") {
+                    scope.declared.set(node.name, {
+                        type: node.varType ?? "any",
+                        mutable: node.mutable,
+                    });
+
+                    scope.initialized.add(node.name);
+                    continue;
+                }
 
                 if (node.varType && exprType !== "any" && exprType !== node.varType) {
                     throw new Error(
