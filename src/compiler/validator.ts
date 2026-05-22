@@ -226,6 +226,11 @@ export function validate(
         if (node.type === "IfStatement") {
             validateExpression(node.test);
 
+            const testType = getExpressionType(node.test, scope);
+            if (testType !== 'bool') {
+                throw new Error(`if 조건식은 bool 타입이어야 합니다`);
+            }
+
             const childScope: Scope = {
                 parent: scope,
                 declared: new Map(),
@@ -248,6 +253,11 @@ export function validate(
         }
         if (node.type === "WhileStatement") {
             validateExpression(node.test);
+
+            const testType = getExpressionType(node.test, scope);
+            if (testType !== 'bool') {
+                throw new Error(`while 조건식은 bool 타입이어야 합니다`);
+            }
 
             const childScope: Scope = {
                 parent: scope,
