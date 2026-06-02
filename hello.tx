@@ -1,5 +1,3 @@
-mut int[] arr = {1, 2, 3};
+mut int[] arr = {1,2,3};
 
-arr[1] = input "숫자 입력: ";
-
-out arr[1];
+out arr[999];

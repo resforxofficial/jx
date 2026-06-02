@@ -266,6 +266,19 @@ export function validate(
             }
             else if (node.target.type === "IndexExpression") {
                 validateExpression(node.target);
+
+                if (node.target.array.type !== "Identifier") {
+                    throw new Error("복잡한 배열 대입은 아직 지원되지 않습니다");
+                }
+
+                const variable = getVariable(node.target.array.name, scope);
+                if (!variable?.mutable) {
+                    throw new Error(`상수 "${node.target.array.name}" 는 수정할 수 없습니다`);
+                }
+
+                if (node.value.type === "InputExpression") {
+                    continue;
+                }
                 const arrayType = getExpressionType(node.target, scope);
                 const valueType = getExpressionType(node.value, scope);
 
