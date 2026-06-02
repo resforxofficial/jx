@@ -144,9 +144,46 @@ export function parse(tokens: Token[]): ASTNode[] {
         }
 
         if (token.type === "Identifier") {
-            return {
+            let expr: ExpressionNode = {
                 type: "Identifier",
                 name: token.value,
+            };
+
+            while (peek()?.type === "BracketOpen") {
+                next();
+                const index = parseExpression();
+                expect("BracketClose");
+
+                expr = {
+                    type: "IndexExpression",
+                    array: expr,
+                    index,
+                };
+            }
+
+            return expr;
+        }
+
+        if (token.type === "BraceOpen") {
+            const elements: ExpressionNode[] = [];
+
+            if (peek()?.type !== "BraceClose") {
+                do {
+                    elements.push(parseExpression());
+
+                    if (peek()?.type === "Punctuation" && peek()?.value === ",") {
+                        next();
+                    } else {
+                        break;
+                    }
+                } while (true);
+            }
+
+            expect("BraceClose");
+
+            return {
+                type: "ArrayLiteral",
+                elements,
             };
         }
 
@@ -186,13 +223,13 @@ export function parse(tokens: Token[]): ASTNode[] {
 
     function parseBlock(): ASTNode[] {
         const block: Token[] = [];
-        expect("Punctuation", "{");
+        expect("BraceOpen", "{");
         let braceCount = 1;
 
         while (i < tokens.length) {
             const t = next();
 
-            if (t.type === "Punctuation") {
+            if (t.type === "BraceOpen") {
                 if (t.value === "{") braceCount++;
                 if (t.value === "}") braceCount--;
             }
@@ -225,6 +262,14 @@ export function parse(tokens: Token[]): ASTNode[] {
 
             if (maybeTypeOrIdent.type === "Type") {
                 varType = maybeTypeOrIdent.value;
+
+                if (peek()?.type === "BracketOpen") {
+                    next();
+                    expect("BracketClose");
+
+                    varType += "[]";
+                }
+
                 identifier = expect("Identifier");
             } else if (maybeTypeOrIdent.type === "Identifier") {
                 identifier = maybeTypeOrIdent;
@@ -370,9 +415,24 @@ export function parse(tokens: Token[]): ASTNode[] {
         // Input Statement
         // -------------------------
         else if (token.type === "Identifier") {
-            const name = token.value;
-            next();
+            let target: ExpressionNode = {
+                type: "Identifier",
+                name: token.value,
+            };
 
+            next();
+            while (peek()?.type === "BracketOpen") {
+                next();
+
+                const index = parseExpression();
+                expect("BracketClose");
+
+                target = {
+                    type: "IndexExpression",
+                    array: target,
+                    index,
+                };
+            }
             expect("Operator", "=");
 
             let value: ExpressionNode;
@@ -395,7 +455,7 @@ export function parse(tokens: Token[]): ASTNode[] {
 
             ast.push({
                 type: "Assignment",
-                identifier: name,
+                target,
                 value,
             });
         }

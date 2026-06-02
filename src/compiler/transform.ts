@@ -71,15 +71,15 @@ export function transform(ast: ASTNode[]): string {
             }
 
             case "Assignment": {
-                const { identifier, value } = node as AssignmentNode;
+                const { target, value } = node as AssignmentNode;
 
                 if (value.type === "InputExpression") {
                     usedPrompt = true;
                     const base = `prompt(${JSON.stringify(value.promptText)})`;
-                    return `${identifier} = Number(${base});`;
+                    return `${formatExpression(target)} = Number(${base});`;
                 }
 
-                return `${identifier} = ${formatExpression(value)};`;
+                return `${formatExpression(target)} = ${formatExpression(value)};`;
             }
 
             case "OutputStatement": {
@@ -154,6 +154,10 @@ function formatExpression(expr: ExpressionNode): string {
             return `(${formatExpression(expr.left)} ${expr.operator} ${formatExpression(expr.right)})`;
         case "UnaryExpression":
             return `(${expr.operator}${formatExpression(expr.operand)})`;
+        case "ArrayLiteral":
+            return `[${expr.elements.map(element => formatExpression(element)).join(", ")}]`;
+        case "IndexExpression":
+            return `${formatExpression(expr.array)}[${formatExpression(expr.index)}]`
         default:
             throw new Error(
                 `formatExpression 에러: 알 수 없는 표현식 타입 (${(expr as any).type})`,

@@ -9,7 +9,11 @@ export type TokenType =
     | "Punctuation" // ;, :, .
     | "ParenOpen" // (
     | "ParenClose" // )
-    | "Unknown"; // 알 수 없는 문법
+    | "Unknown" // 알 수 없는 문법
+    | "BracketOpen"
+    | "BracketClose"
+    | "BraceOpen"
+    | "BraceClose";
 
 export interface Token {
     type: TokenType;
@@ -17,7 +21,15 @@ export interface Token {
     position: number;
 }
 
-const KEYWORDS = new Set(["mut", "out", "input", "if", "else", "while", "immut"]);
+const KEYWORDS = new Set([
+    "mut",
+    "out",
+    "input",
+    "if",
+    "else",
+    "while",
+    "immut",
+]);
 
 const TYPES = new Set(["str", "int", "bool"]);
 
@@ -49,15 +61,27 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
+        if (char === "[") {
+            tokens.push({ type: "BracketOpen", value: char, position: i });
+            i++;
+            continue;
+        }
+
+        if (char === "]") {
+            tokens.push({ type: "BracketClose", value: char, position: i });
+            i++;
+            continue;
+        }
+
         // 중괄호
         if (char === "{") {
-            tokens.push({ type: "Punctuation", value: "{", position: i });
+            tokens.push({ type: "BraceOpen", value: "{", position: i });
             i++;
             continue;
         }
 
         if (char === "}") {
-            tokens.push({ type: "Punctuation", value: "}", position: i });
+            tokens.push({ type: "BraceClose", value: "}", position: i });
             i++;
             continue;
         }
@@ -127,19 +151,24 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
+        // && ||
+        if (
+            (char === "&" && code[i + 1] === "&") ||
+            (char === "|" && code[i + 1] === "|")
+        ) {
+            tokens.push({
+                type: "Operator",
+                value: char + code[i + 1],
+                position: i,
+            });
+
+            i += 2;
+            continue;
+        }
+
         // 비교 연산자
         if ([">", "<", "=", "!"].includes(char)) {
             let op = char;
-            if ((char === "&" && code[i + 1] === "&") || (char === "|" && code[i+1] === "|")) {
-                tokens.push({
-                    type: "Operator",
-                    value: char + code[i + 1],
-                    position: 1,
-                });
-
-                i += 2;
-                continue;
-            }
 
             if (code[i + 1] === "=") {
                 op += "=";
@@ -147,7 +176,12 @@ export function tokenize(code: string): Token[] {
             }
 
             if (["==", "!=", ">=", "<="].includes(op) || [">", "<"].includes(op)) {
-                tokens.push({ type: "Operator", value: op, position: i });
+                tokens.push({
+                    type: "Operator",
+                    value: op,
+                    position: i,
+                });
+
                 i++;
                 continue;
             }
@@ -155,7 +189,12 @@ export function tokenize(code: string): Token[] {
 
         // 연산자
         if ("=+-*/!".includes(char)) {
-            tokens.push({ type: "Operator", value: char, position: i });
+            tokens.push({
+                type: "Operator",
+                value: char,
+                position: i,
+            });
+
             i++;
             continue;
         }

@@ -1,8 +1,5 @@
-immut int a = input "input some: ";
-if (!(a+3 < 10)) {
-    out !(a+3 < 10), !(a + 3 < 10);
-}
+mut int[] arr = {1, 2, 3};
 
-else {
-    out "else statement";
-}
+arr[1] = input "숫자 입력: ";
+
+out arr[1];

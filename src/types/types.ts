@@ -22,7 +22,7 @@ export type WhileStatementNode = {
 
 export type AssignmentNode = {
     type: "Assignment";
-    identifier: string;
+    target: ExpressionNode;
     value: ExpressionNode;
 };
 
@@ -50,7 +50,9 @@ export type ExpressionNode =
     | IdentifierNode
     | InputExpressionNode
     | UnaryExpressionNode
-    | BinaryExpressionNode;
+    | BinaryExpressionNode
+    | ArrayLiteralNode
+    | IndexExpressionNode;
 
 export type LiteralNode = {
     type: "Literal";
@@ -86,3 +88,15 @@ export type UnaryExpressionNode = {
     operator: string;
     operand: ExpressionNode;
 };
+
+export type ArrayLiteralNode = {
+    type: "ArrayLiteral";
+    elements: ExpressionNode[];
+};
+
+export type IndexExpressionNode = {
+    type: "IndexExpression";
+    array: ExpressionNode;
+    index: ExpressionNode;
+};
+

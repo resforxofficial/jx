@@ -125,6 +125,39 @@ export function validate(
             return "str";
         }
 
+        if (expr.type === "ArrayLiteral") {
+            if (expr.elements.length === 0) {
+                return "any[]";
+            }
+
+            const firstType = getExpressionType(expr.elements[0], scope);
+
+            for (const el of expr.elements) {
+                const elementType = getExpressionType(el, scope);
+
+                if (elementType !== firstType) {
+                    throw new Error("배열 요소 타입이 일치하지 않습니다");
+                }
+            }
+
+            return `${firstType}[]`;
+        }
+
+        if (expr.type === "IndexExpression") {
+            const arrayType = getExpressionType(expr.array, scope);
+            const indexType = getExpressionType(expr.index, scope);
+
+            if (indexType !== "int") {
+                throw new Error("배열 인덱스는 int 타입이어야 합니다");
+            }
+
+            if (!arrayType.endsWith("[]")) {
+                throw new Error("배열이 아닌 값에 인덱싱할 수 없습니다");
+            }
+
+            return arrayType.slice(0, -2);
+        }
+
         if (expr.type === "BinaryExpression") {
             const leftType = getExpressionType(expr.left, scope);
 
@@ -205,24 +238,43 @@ export function validate(
             continue;
         }
         if (node.type === "Assignment") {
-            validateIdentifierUsage(node.identifier);
-            const variable = getVariable(node.identifier, scope);
-            if (!variable?.mutable) {
-                throw new Error(`상수 "${node.identifier}" 는 수정할 수 없습니다`);
+            if (
+                node.target.type !== "Identifier" &&
+                node.target.type !== "IndexExpression"
+            ) {
+                throw new Error("아직 변수 이외의 대입은 지원되지 않습니다");
             }
 
-            validateExpression(node.value);
-            // here
-            const exprType = getExpressionType(node.value, scope);
-            if (variable && exprType !== "any" && variable.type !== exprType) {
-                throw new Error(
-                    `타입 불일치: "${node.identifier}" 는 ${variable.type} 타입입니다`,
-                );
+            if (node.target.type === "Identifier") {
+                validateIdentifierUsage(node.target.name);
+                const variable = getVariable(node.target.name, scope);
+                if (!variable?.mutable) {
+                    throw new Error(`상수 "${node.target.name}" 는 수정할 수 없습니다`);
+                }
+
+                validateExpression(node.value);
+                const exprType = getExpressionType(node.value, scope);
+
+                if (variable && exprType !== "any" && variable.type !== exprType) {
+                    throw new Error(
+                        `타입 불일치: "${node.target.name}" 는 ${variable.type} 타입입니다`,
+                    );
+                }
+
+                scope.initialized.add(node.target.name);
+                continue;
             }
+            else if (node.target.type === "IndexExpression") {
+                validateExpression(node.target);
+                const arrayType = getExpressionType(node.target, scope);
+                const valueType = getExpressionType(node.value, scope);
 
-            scope.initialized.add(node.identifier);
+                if (arrayType !== valueType && valueType !== "any") {
+                    throw new Error("배열 요소 타입과 대입 타입이 일치하지 않습니다");
+                }
 
-            continue;
+                continue;
+            }
         }
         if (node.type === "OutputStatement") {
             for (const expr of node.expressions) {
@@ -236,7 +288,7 @@ export function validate(
             validateExpression(node.test);
 
             const testType = getExpressionType(node.test, scope);
-            if (testType !== 'bool') {
+            if (testType !== "bool") {
                 throw new Error(`if 조건식은 bool 타입이어야 합니다`);
             }
 
@@ -264,7 +316,7 @@ export function validate(
             validateExpression(node.test);
 
             const testType = getExpressionType(node.test, scope);
-            if (testType !== 'bool') {
+            if (testType !== "bool") {
                 throw new Error(`while 조건식은 bool 타입이어야 합니다`);
             }
 
