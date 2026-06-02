@@ -151,51 +151,20 @@ export function tokenize(code: string): Token[] {
             continue;
         }
 
-        // && ||
-        if (
-            (char === "&" && code[i + 1] === "&") ||
-            (char === "|" && code[i + 1] === "|")
-        ) {
-            tokens.push({
-                type: "Operator",
-                value: char + code[i + 1],
-                position: i,
-            });
+        // 두 글자 연산자 결합 체크 (&&, ||, ==, !=, >=, <=)
+        const nextChar = code[i + 1];
+        const twoCharOp = char + nextChar;
 
+        if (["==", "!=", ">=", "<=", "&&", "||"].includes(twoCharOp)) {
+            tokens.push({ type: "Operator", value: twoCharOp, position: i });
             i += 2;
             continue;
         }
 
-        // 비교 연산자
-        if ([">", "<", "=", "!"].includes(char)) {
-            let op = char;
-
-            if (code[i + 1] === "=") {
-                op += "=";
-                i++;
-            }
-
-            if (["==", "!=", ">=", "<="].includes(op) || [">", "<"].includes(op)) {
-                tokens.push({
-                    type: "Operator",
-                    value: op,
-                    position: i,
-                });
-
-                i++;
-                continue;
-            }
-        }
-
-        // 연산자
-        if ("=+-*/!".includes(char)) {
-            tokens.push({
-                type: "Operator",
-                value: char,
-                position: i,
-            });
-
-            i++;
+        // 단일 글자 연산자 체크
+        if ("=+-*/!><".includes(char)) {
+            tokens.push({ type: "Operator", value: char, position: i });
+            i += 1;
             continue;
         }
 

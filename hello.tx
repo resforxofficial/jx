@@ -1,3 +1,1 @@
-mut int[] arr = {1,2,3};
-
-out arr[999];
+out 1,2,3;

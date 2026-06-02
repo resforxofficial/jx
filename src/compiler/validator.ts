@@ -246,11 +246,16 @@ export function validate(
             }
 
             if (node.target.type === "Identifier") {
-                validateIdentifierUsage(node.target.name);
+                // 초기화 검사(validateIdentifierUsage) 대신 선언 여부만 먼저 검사합니다.
+                if (!isDeclared(node.target.name, scope)) {
+                    throw new Error(`변수 "${node.target.name}" 는 선언되지 않았습니다`);
+                }
+
                 const variable = getVariable(node.target.name, scope);
                 if (!variable?.mutable) {
                     throw new Error(`상수 "${node.target.name}" 는 수정할 수 없습니다`);
                 }
+                //
 
                 validateExpression(node.value);
                 const exprType = getExpressionType(node.value, scope);
@@ -263,8 +268,7 @@ export function validate(
 
                 scope.initialized.add(node.target.name);
                 continue;
-            }
-            else if (node.target.type === "IndexExpression") {
+            } else if (node.target.type === "IndexExpression") {
                 validateExpression(node.target);
 
                 if (node.target.array.type !== "Identifier") {
@@ -273,7 +277,9 @@ export function validate(
 
                 const variable = getVariable(node.target.array.name, scope);
                 if (!variable?.mutable) {
-                    throw new Error(`상수 "${node.target.array.name}" 는 수정할 수 없습니다`);
+                    throw new Error(
+                        `상수 "${node.target.array.name}" 는 수정할 수 없습니다`,
+                    );
                 }
 
                 if (node.value.type === "InputExpression") {

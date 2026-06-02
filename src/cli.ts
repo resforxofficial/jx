@@ -31,6 +31,7 @@ const jsCode = transform(ast);
 
 // 5. 변환 결과 저장
 const outputPath = path.resolve('./.tx_temp_output.ts');
+const runtimeImport = `import { print } from './src/runtime/index.js';\n`;
 fs.writeFileSync(outputPath, jsCode);
 
 // 6. 실행
