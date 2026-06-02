@@ -1,6 +1,6 @@
 immut int a = input "input some: ";
-if (!(a+3) < 10) {
-    out !(a+3) < 10, !(a + 3 < 10);
+if (!(a+3 < 10)) {
+    out !(a+3 < 10), !(a + 3 < 10);
 }
 
 else {

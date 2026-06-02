@@ -130,6 +130,17 @@ export function tokenize(code: string): Token[] {
         // 비교 연산자
         if ([">", "<", "=", "!"].includes(char)) {
             let op = char;
+            if ((char === "&" && code[i + 1] === "&") || (char === "|" && code[i+1] === "|")) {
+                tokens.push({
+                    type: "Operator",
+                    value: char + code[i + 1],
+                    position: 1,
+                });
+
+                i += 2;
+                continue;
+            }
+
             if (code[i + 1] === "=") {
                 op += "=";
                 i++;

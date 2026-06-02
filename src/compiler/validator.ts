@@ -139,6 +139,14 @@ export function validate(
                 return "int";
             }
 
+            if (["&&", "||"].includes(expr.operator)) {
+                if (leftType !== "bool" || rightType !== "bool") {
+                    throw new Error(`논리 연산은 bool 타입만 가능합니다`);
+                }
+
+                return "bool";
+            }
+
             // 비교 연산
             if (["==", "!=", ">", "<", ">=", "<="].includes(expr.operator)) {
                 if (leftType !== rightType) {
@@ -219,6 +227,7 @@ export function validate(
         if (node.type === "OutputStatement") {
             for (const expr of node.expressions) {
                 validateExpression(expr);
+                getExpressionType(expr, scope);
             }
 
             continue;

@@ -33,7 +33,29 @@ export function parse(tokens: Token[]): ASTNode[] {
     // -----------------------------------
 
     function parseExpression(): ExpressionNode {
-        return parseComparison();
+        return parseLogical();
+    }
+
+    function parseLogical(): ExpressionNode {
+        let left = parseComparison();
+
+        while (
+            peek()?.type === "Operator" &&
+            ["&&", "||"].includes(peek()!.value)
+        ) {
+            const operator = next().value;
+
+            const right = parseComparison();
+
+            left = {
+                type: "BinaryExpression",
+                operator,
+                left,
+                right,
+            };
+        }
+
+        return left;
     }
 
     function parseComparison(): ExpressionNode {
