@@ -157,6 +157,21 @@ export function validate(
 
             return arrayType.slice(0, -2);
         }
+        if (expr.type === "MemberExpression") {
+            const objType = getExpressionType(expr.object, scope);
+            if (!objType.endsWith("[]")) {
+                throw new Error("배열이 아닌 값의 속성에 접근할 수 없습니다");
+            }
+
+            if (["length", "first", "last"].includes(expr.property)) {
+                return expr.property === "length" ? "int" : objType.slice(0, -2);
+            }
+
+            if (expr.property === "empty") {
+                return "bool";
+            }
+            throw new Error(`알 수 없는 배열 속성: ${expr.property}`);
+        }
 
         if (expr.type === "BinaryExpression") {
             const leftType = getExpressionType(expr.left, scope);
@@ -218,7 +233,7 @@ export function validate(
                     continue;
                 }
 
-                if (node.varType && exprType !== "any" && exprType !== node.varType) {
+                if (node.varType && exprType !== "any" && exprType !== "any[]" && exprType !== node.varType) {
                     throw new Error(
                         `타입 불일치: "${node.name}" 는 ${node.varType} 타입입니다`,
                     );
@@ -289,7 +304,7 @@ export function validate(
                 const valueType = getExpressionType(node.value, scope);
 
                 if (arrayType !== valueType && valueType !== "any") {
-                    throw new Error("배열 요소 타입과 대입 타입이 일치하지 않습니다");
+                    throw new Error("배열 원소 타입과 대입하려는 값의 타입이 일치하지 않습니다");
                 }
 
                 continue;

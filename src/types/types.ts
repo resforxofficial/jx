@@ -4,6 +4,7 @@ export type ASTNode =
     | IfStatementNode
     | InputStatementNode
     | WhileStatementNode
+    | ForStatementNode
     | AssignmentNode;
 
 export type VariableDeclarationNode = {
@@ -52,12 +53,19 @@ export type ExpressionNode =
     | UnaryExpressionNode
     | BinaryExpressionNode
     | ArrayLiteralNode
+    | MemberExpressionNode
     | IndexExpressionNode;
 
 export type LiteralNode = {
     type: "Literal";
     value: string | number | boolean;
 };
+
+export type MemberExpressionNode = {
+    type: "MemberExpression";
+    object: ExpressionNode;
+    property: string;
+}; // 👈 이 줄 추가
 
 export type IdentifierNode = {
     type: "Identifier";
@@ -89,6 +97,15 @@ export type UnaryExpressionNode = {
     operand: ExpressionNode;
 };
 
+export type ForStatementNode = {
+    type: "ForStatement";
+    init: ASTNode;         // int i = 0 (변수 선언 노드)
+    test: ASTNode;         // i < 5 (자동 조립될 비교식 노드)
+    updateOperator: "+" | "-"; // 증감 방향
+    iteratorName: string;  // "i" (증감할 변수 이름)
+    body: ASTNode[];
+};
+
 export type ArrayLiteralNode = {
     type: "ArrayLiteral";
     elements: ExpressionNode[];
@@ -99,4 +116,3 @@ export type IndexExpressionNode = {
     array: ExpressionNode;
     index: ExpressionNode;
 };
-

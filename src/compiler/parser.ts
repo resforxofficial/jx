@@ -149,16 +149,20 @@ export function parse(tokens: Token[]): ASTNode[] {
                 name: token.value,
             };
 
-            while (peek()?.type === "BracketOpen") {
-                next();
-                const index = parseExpression();
-                expect("BracketClose");
-
-                expr = {
-                    type: "IndexExpression",
-                    array: expr,
-                    index,
-                };
+            while (
+                peek()?.type === "BracketOpen" ||
+                (peek()?.type === "Punctuation" && peek()?.value === ".")
+            ) {
+                if (peek()?.value === ".") {
+                    next();
+                    const prop = expect("Identifier").value;
+                    expr = { type: "MemberExpression", object: expr, property: prop };
+                } else {
+                    next();
+                    const index = parseExpression();
+                    expect("BracketClose");
+                    expr = { type: "IndexExpression", array: expr, index };
+                }
             }
 
             return expr;
@@ -406,6 +410,54 @@ export function parse(tokens: Token[]): ASTNode[] {
             ast.push({
                 type: "WhileStatement",
                 test: condition,
+                body,
+            });
+        } else if (token.type === "Keyword" && token.value === "for") {
+            next();
+            expect("ParenOpen");
+
+            const varType = expect("Identifier").value;
+            const iteratorName = expect("Identifier").value;
+            expect("Operator", "=");
+
+            const initValue = parseExpression();
+
+            const init = {
+                type: "VariableDeclaration" as const,
+                varType,
+                name: iteratorName,
+                value: initValue,
+                mutable: true,
+            };
+            expect("Punctuation", ":");
+            const opToken = next();
+            if (!opToken || opToken.type !== "Operator") {
+                throw new Error("for 문의 조건식에는 비교 연산자가 와야 합니다.");
+            }
+
+            const rightExpr = parseExpression();
+            const test = {
+                type: "BinaryExpression" as const,
+                operator: opToken.value,
+                left: { type: "Identifier" as const, name: iteratorName },
+                right: rightExpr,
+            } as any;
+
+            const updateToken = next();
+            if (!updateToken || (updateToken.value !== "+" && updateToken.value !== "-")) {
+                throw new Error("for 문의 조건식 뒤에는 '+' 또는 '-' 증감 표시가 와야 합니다.");
+            }
+
+            const updateOperator = updateToken.value as "+" | "-";
+            expect("ParenClose");
+            const body = parseBlock();
+
+            ast.push({
+                type: "ForStatement",
+                init,
+                test,
+                updateOperator,
+                iteratorName,
                 body,
             });
         }

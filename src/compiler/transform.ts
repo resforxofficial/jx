@@ -125,6 +125,11 @@ export function transform(ast: ASTNode[]): string {
 // ---- 유틸 함수 ----
 
 function mapTypeToTs(type: string): string {
+    if (type.endsWith("[]")) {
+        const baseType = type.slice(0, -2);
+        return `${mapTypeToTs(baseType)}[]`;
+    }
+
     if (type === "str") return "string";
     if (type === "int") return "number";
     if (type === "bool") return "boolean";
@@ -155,9 +160,17 @@ function formatExpression(expr: ExpressionNode): string {
         case "UnaryExpression":
             return `(${expr.operator}${formatExpression(expr.operand)})`;
         case "ArrayLiteral":
-            return `[${expr.elements.map(element => formatExpression(element)).join(", ")}]`;
+            return `[${expr.elements.map((element) => formatExpression(element)).join(", ")}]`;
         case "IndexExpression":
-            return `${formatExpression(expr.array)}[${formatExpression(expr.index)}]`
+            return `${formatExpression(expr.array)}[${formatExpression(expr.index)}]`;
+        case "MemberExpression": {
+            const obj = formatExpression(expr.object);
+            if (expr.property === "length") return `${obj}.length`;
+            if (expr.property === "first") return `${obj}[0]`;
+            if (expr.property === "last") return `${obj}[${obj}.length - 1]`;
+            if (expr.property === "empty") return `(${obj}.length === 0)`;
+            return `${obj}.${expr.property}`;
+        }
         default:
             throw new Error(
                 `formatExpression 에러: 알 수 없는 표현식 타입 (${(expr as any).type})`,

@@ -1,1 +1,12 @@
-out 1,2,3;
+
+mut int[] numbers = {10, 20, 30};
+
+out numbers.length; 
+out numbers.first;
+out numbers.last;
+out numbers.empty;
+
+mut str[] words = {};
+
+out words.length;
+out words.empty;

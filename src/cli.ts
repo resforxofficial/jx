@@ -19,7 +19,7 @@ const raw = fs.readFileSync(inputPath, 'utf-8');
 // 1. 토크나이징
 const tokens = tokenize(raw);
 const ast = parse(tokens);
-console.dir(ast, { depth: null });
+// console.dir(ast, { depth: null });
 
 // 2. 문법 검사
 validate(ast);
@@ -32,7 +32,7 @@ const jsCode = transform(ast);
 // 5. 변환 결과 저장
 const outputPath = path.resolve('./.tx_temp_output.ts');
 const runtimeImport = `import { print } from './src/runtime/index.js';\n`;
-fs.writeFileSync(outputPath, jsCode);
+fs.writeFileSync(outputPath, runtimeImport + jsCode);
 
 // 6. 실행
 spawnSync('npx', ['tsx', outputPath], { stdio: 'inherit' });
