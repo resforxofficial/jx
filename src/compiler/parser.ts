@@ -413,14 +413,17 @@ export function parse(tokens: Token[]): ASTNode[] {
                 body,
             });
         } else if (token.type === "Keyword" && token.value === "for") {
-            next();
-            expect("ParenOpen");
+            // 💡 만약 이 else if 문에 들어오기 전에 메인 루프 시작점에서 이미 next()를 통해
+            // "for" 토큰을 소모한 상태라면, 여기서는 바로 "("를 기대해야 합니다.
 
-            const varType = expect("Identifier").value;
-            const iteratorName = expect("Identifier").value;
-            expect("Operator", "=");
+            expect("ParenOpen"); // 여기서 확실하게 '(' 토큰을 소모하고 넘어갑니다.
 
-            const initValue = parseExpression();
+            // 1. 초기화식 파싱 (int i = 0)
+            const varType = expect("Identifier").value; // "int"
+            const iteratorName = expect("Identifier").value; // "i"
+
+            expect("Operator", "="); // "=" 👈 이제 정확히 이 녀석을 바라보게 됩니다!
+            const initValue = parseExpression(); // 0
 
             const init = {
                 type: "VariableDeclaration" as const,
@@ -429,27 +432,38 @@ export function parse(tokens: Token[]): ASTNode[] {
                 value: initValue,
                 mutable: true,
             };
-            expect("Punctuation", ":");
+
+            expect("Punctuation", ":"); // ":"
+
+            // 2. 조건식 복원 (< 5)
             const opToken = next();
             if (!opToken || opToken.type !== "Operator") {
                 throw new Error("for 문의 조건식에는 비교 연산자가 와야 합니다.");
             }
-
             const rightExpr = parseExpression();
+
             const test = {
                 type: "BinaryExpression" as const,
                 operator: opToken.value,
                 left: { type: "Identifier" as const, name: iteratorName },
                 right: rightExpr,
-            } as any;
+            };
 
+            // 3. 증감 표시 (+ 또는 -)
             const updateToken = next();
-            if (!updateToken || (updateToken.value !== "+" && updateToken.value !== "-")) {
-                throw new Error("for 문의 조건식 뒤에는 '+' 또는 '-' 증감 표시가 와야 합니다.");
+            if (
+                !updateToken ||
+                (updateToken.value !== "+" && updateToken.value !== "-")
+            ) {
+                throw new Error(
+                    "for 문의 조건식 뒤에는 '+' 또는 '-' 증감 표시가 와야 합니다.",
+                );
             }
-
             const updateOperator = updateToken.value as "+" | "-";
-            expect("ParenClose");
+
+            expect("ParenClose"); // ")"
+
+            // 4. 바디 블록 파싱
             const body = parseBlock();
 
             ast.push({

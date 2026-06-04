@@ -115,6 +115,15 @@ export function transform(ast: ASTNode[]): string {
                 return `while (${formatExpression(test)}) {\n${bodyCode}\n}`;
             }
 
+            case "ForStatement":
+                const { init, test, updateOperator, iteratorName, body } = node;
+                const initCode = transformNode(init).replace(";", "").trim();
+                const testCode = formatExpression(test);
+
+                const updateCode = updateOperator === "+" ? `${iteratorName}++` : `${iteratorName}--`;
+                const bodyCode = body.map(transformNode).join("\n");
+                return `for (${initCode}; ${testCode}; ${updateCode}) {\n${bodyCode}\n}`;
+
             default:
                 const _exhaustiveCheck: never = node;
                 throw new Error(`Unhandled node type: ${(node as any).type}`);

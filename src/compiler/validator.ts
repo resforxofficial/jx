@@ -364,6 +364,24 @@ export function validate(
 
             continue;
         }
+        if (node.type === "ForStatement") {
+            const forScope: Scope = {
+                parent: scope,
+                declared: new Map(),
+                initialized: new Set(),
+            };
+
+            validate([node.init], forScope);
+            validateExpression(node.test);
+            const testType = getExpressionType(node.test, forScope);
+            
+            if (testType !== "bool") {
+                throw new Error(`for 조건식은 bool 타입이어야 합니다`);
+            }
+
+            validate(node.body, forScope);
+            continue;
+        }
 
         throw new Error(`지원되지 않는 AST 노드: ${node.type}`);
     }

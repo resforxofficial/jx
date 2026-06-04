@@ -100,7 +100,7 @@ export type UnaryExpressionNode = {
 export type ForStatementNode = {
     type: "ForStatement";
     init: ASTNode;         // int i = 0 (변수 선언 노드)
-    test: ASTNode;         // i < 5 (자동 조립될 비교식 노드)
+    test: ExpressionNode;         // i < 5 (자동 조립될 비교식 노드)
     updateOperator: "+" | "-"; // 증감 방향
     iteratorName: string;  // "i" (증감할 변수 이름)
     body: ASTNode[];

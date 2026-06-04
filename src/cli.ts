@@ -19,7 +19,7 @@ const raw = fs.readFileSync(inputPath, 'utf-8');
 // 1. 토크나이징
 const tokens = tokenize(raw);
 const ast = parse(tokens);
-// console.dir(ast, { depth: null });
+console.dir(ast, { depth: null });
 
 // 2. 문법 검사
 validate(ast);
